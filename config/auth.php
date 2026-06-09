@@ -39,7 +39,7 @@ function canAccess(string $module): bool {
     $map = [
         'import'          => ['admin', 'maker', 'finance_manager'],
         'ap_invoices'     => ['admin', 'maker', 'checker', 'finance_manager'],
-        'payment_requests'=> ['admin', 'maker', 'checker', 'finance_manager'],
+        'payment_requests'=> ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
         'approval'        => ['admin', 'checker', 'approver', 'finance_manager', 'executive'],
         'payment_batch'   => ['admin', 'finance_manager'],
         'cheques'         => ['admin', 'finance_manager'],

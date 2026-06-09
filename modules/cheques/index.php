@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pr = $stmtPR->fetch();
 
         if (!$pr) { flash('error','Payment Request not found'); redirect(BASE_URL . '/modules/cheques/'); }
-        if (!in_array($pr['status'], ['Approved','Ready to Pay'])) {
+        if (!in_array($pr['status'], ['Approved for Payment'], true)) {
             flash('error', 'Cheque สามารถสร้างได้เฉพาะรายการที่ Approved แล้วเท่านั้น');
             redirect(BASE_URL . '/modules/cheques/');
         }
@@ -79,7 +79,7 @@ $cheques->execute($params);
 $cheques = $cheques->fetchAll();
 
 // PRs eligible for cheque creation
-$eligiblePRs = $db->query("SELECT * FROM payment_requests WHERE status IN ('Approved','Ready to Pay') AND is_deleted=0 ORDER BY due_date")->fetchAll();
+$eligiblePRs = $db->query("SELECT * FROM payment_requests WHERE status IN ('Approved for Payment') AND is_deleted=0 ORDER BY due_date")->fetchAll();
 
 $chequeStatuses = ['prepared','signed','released','received','cancelled','void'];
 

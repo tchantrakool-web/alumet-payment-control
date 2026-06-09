@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Request Detail | Alumet Co., Ltd.</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.tailwindcss.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --brand-primary:#006B3F;
+    --brand-primary-soft:#E6F4EC;
+    --brand-secondary:#003B5C;
+    --brand-secondary-soft:#DCE8F0;
+    --brand-accent:#A4D65E;
+    --brand-accent-soft:#F1F9E6;
+    --brand-ink:#17313D;
+  }
+  [x-cloak]{display:none!important}
+  body{
+    background:
+      radial-gradient(circle at top left, rgba(164,214,94,.18), transparent 22%),
+      linear-gradient(180deg, #f8fbf8 0%, #eef4f1 100%);
+    color:var(--brand-ink);
+  }
+  .sidebar-link{
+    display:flex;
+    align-items:center;
+    gap:.65rem;
+    padding:.65rem .9rem;
+    border-radius:.8rem;
+    font-size:.875rem;
+    font-weight:600;
+    color:#d8e7e1;
+    transition:background-color .2s,color .2s,transform .2s;
+  }
+  .sidebar-link:hover{
+    background:rgba(164,214,94,.16);
+    color:#ffffff;
+    transform:translateX(2px);
+  }
+  .sidebar-link.active{
+    background:linear-gradient(135deg, var(--brand-primary) 0%, #0b7a4a 100%);
+    color:#ffffff;
+    box-shadow:0 12px 24px rgba(0,107,63,.22);
+  }
+  .sidebar-section{color:#9dc3b3}
+  .theme-input:focus{
+    outline:none;
+    border-color:var(--brand-primary);
+    box-shadow:0 0 0 3px rgba(0,107,63,.15);
+  }
+  .theme-btn-primary{background:var(--brand-primary);color:#fff}
+  .theme-btn-primary:hover{background:#005432}
+  .theme-btn-secondary{background:var(--brand-secondary);color:#fff}
+  .theme-btn-secondary:hover{background:#032f49}
+</style>
+</head>
+<body class="min-h-screen" x-data="{ sidebarOpen: true }">
+
+<nav class="fixed top-0 left-0 right-0 z-30 text-white h-14 flex items-center px-4 gap-4 shadow-lg" style="background:linear-gradient(90deg, #003B5C 0%, #0A536F 100%);">
+  <button @click="sidebarOpen = !sidebarOpen" class="text-white hover:text-[#A4D65E] p-1 rounded transition-colors" aria-label="Toggle sidebar">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+    </svg>
+  </button>
+  <a href="http://localhost/Alumet/alumet-payment-control/dashboard.php" class="flex items-center gap-3 min-w-0">
+    <img src="http://localhost/Alumet/alumet-payment-control/uploads/branding/alumet-logo.jpg" alt="Alumet" class="h-8 w-auto rounded-md bg-white/95 px-2 py-1 shadow-sm">
+    <div class="min-w-0">
+      <div class="font-bold text-lg tracking-wide leading-none">Payment Control Tower</div>
+      <div class="text-xs hidden md:block truncate" style="color:#B8D4C4;">Alumet Co., Ltd.</div>
+    </div>
+  </a>
+  <div class="ml-auto flex items-center gap-3">
+    <span class="text-sm" style="color:#D8E7E1;">Finance Manager</span>
+    <span class="text-xs px-2 py-0.5 rounded-full" style="background:rgba(164,214,94,.18); color:#F5FFE9;">finance_manager</span>
+    <a href="http://localhost/Alumet/alumet-payment-control/logout.php" class="text-sm ml-2 hover:text-white transition-colors" style="color:#B8D4C4;">Logout</a>
+  </div>
+</nav>
+
+<div class="flex pt-14 min-h-screen">
+  <aside class="fixed left-0 top-14 bottom-0 z-20 transition-all duration-300 overflow-y-auto overflow-x-hidden"
+         style="background:linear-gradient(180deg, #042D46 0%, #003B5C 52%, #005432 100%);"
+         :class="sidebarOpen ? 'w-56' : 'w-0'">
+    <div class="p-3 space-y-0.5" x-show="sidebarOpen">
+      
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-3 pb-1">Main</div>
+<a href="http://localhost/Alumet/alumet-payment-control/dashboard.php" class="sidebar-link">📊 <span>Dashboard</span></a>
+
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Finance</div>
+<a href="http://localhost/Alumet/alumet-payment-control/modules/import/" class="sidebar-link">📥 <span>Import Center</span></a>
+<a href="http://localhost/Alumet/alumet-payment-control/modules/ap_invoices/" class="sidebar-link">📋 <span>AP Invoice Queue</span></a>
+<a href="http://localhost/Alumet/alumet-payment-control/modules/payment_requests/" class="sidebar-link active">📝 <span>Payment Requests</span></a>
+
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Approval</div>
+<a href="http://localhost/Alumet/alumet-payment-control/modules/approval/" class="sidebar-link">✅ <span>Approval Queue</span></a>
+
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Payment</div>
+<a href="http://localhost/Alumet/alumet-payment-control/modules/payment_batch/" class="sidebar-link">💼 <span>Payment Batch</span></a>
+<a href="http://localhost/Alumet/alumet-payment-control/modules/cheques/" class="sidebar-link">🏦 <span>Cheque Register</span></a>
+<a href="http://localhost/Alumet/alumet-payment-control/modules/calendar/" class="sidebar-link">📅 <span>Payment Calendar</span></a>
+
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Analytics</div>
+<a href="http://localhost/Alumet/alumet-payment-control/modules/reports/" class="sidebar-link">📈 <span>Reports</span></a>
+
+    </div>
+  </aside>
+
+  <main class="flex-1 transition-all duration-300 p-5" :class="sidebarOpen ? 'ml-56' : 'ml-0'">
+    
+<div class="mb-5 flex items-center gap-3">
+  <a href="http://localhost/Alumet/alumet-payment-control/modules/payment_requests/" class="text-sm text-gray-500 hover:text-gray-700">&larr; Payment Requests</a>
+</div>
+
+<div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+  <div class="space-y-4 lg:col-span-2">
+    <div class="rounded-xl border bg-white p-5">
+      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-lg font-bold text-gray-800">PR2026060002</h2>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">Paid</span>                                  </div>
+          <p class="mt-0.5 text-sm text-gray-600">ChiaoChanIT Solution Co.,Ltd. (VD0802)</p>
+        </div>
+        <div class="text-right">
+          <p class="text-2xl font-bold" style="color:#003B5C;">THB 84,661.50</p>
+          <p class="text-xs text-gray-400">Net Payable</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+        <div><p class="text-xs text-gray-500">Gross Amount</p><p class="font-medium">THB 87,279.90</p></div>
+        <div><p class="text-xs text-gray-500">WHT</p><p class="font-medium">THB 2,618.40</p></div>
+        <div><p class="text-xs text-gray-500">Outstanding Balance</p><p class="font-medium text-gray-400">THB 0.00</p></div>
+        <div><p class="text-xs text-gray-500">Invoice Ref.</p><p class="font-medium text-xs">126030065, 126030064</p></div>
+        <div><p class="text-xs text-gray-500">Due Date</p><p class="font-medium ">16/06/2026</p></div>
+        <div><p class="text-xs text-gray-500">Payment Method</p><p class="font-medium capitalize">cheque</p></div>
+        <div><p class="text-xs text-gray-500">Created By</p><p class="font-medium">Finance Maker</p></div>
+        <div><p class="text-xs text-gray-500">Created At</p><p class="font-medium">09/06/2026 14:17</p></div>
+                <div><p class="text-xs text-gray-500">Finance Review By</p><p class="font-medium">Finance Maker</p></div>
+        <div><p class="text-xs text-gray-500">Finance Review At</p><p class="font-medium">09/06/2026 14:17</p></div>
+                        <div><p class="text-xs text-gray-500">Payment Ref.</p><p class="font-medium">E2E-PAY-001</p></div>
+        <div><p class="text-xs text-gray-500">Payment Date</p><p class="font-medium">09/06/2026</p></div>
+              </div>
+
+            <div class="mt-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+        <span class="font-medium">Note: </span>Accounting review completed in E2E      </div>
+                </div>
+
+    <div class="rounded-xl border bg-white p-5">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-700">Accounting Review Checklist</h3>
+                <span class="rounded bg-emerald-100 px-2 py-1 text-xs text-emerald-700">Ready</span>
+              </div>
+
+      <form method="POST" class="space-y-4">
+        <input type="hidden" name="action" value="save_review">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
+            <input type="checkbox" name="has_po" value="1" checked>
+            PO confirmed
+          </label>
+          <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
+            <input type="checkbox" name="has_grn" value="1" checked>
+            GRN / GRPO confirmed
+          </label>
+          <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
+            <input type="checkbox" name="has_invoice" value="1" checked>
+            Vendor invoice confirmed
+          </label>
+          <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
+            <input type="checkbox" name="has_tax_invoice" value="1" checked>
+            Tax invoice confirmed
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-xs text-gray-500">Gross Amount</label>
+            <input type="number" step="0.01" min="0" name="gross_amount" value="87279.9"
+                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+          </div>
+          <div class="rounded-lg border p-3">
+            <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input type="checkbox" name="wht_applicable" value="1" checked>
+              WHT applicable
+            </label>
+            <label class="mt-2 flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" name="tax_invoice_required" value="1" checked>
+              Tax invoice required
+            </label>
+          </div>
+          <div>
+            <label class="mb-1 block text-xs text-gray-500">WHT Rate (%)</label>
+            <input type="number" step="0.01" min="0" name="wht_rate" value="3"
+                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="mb-1 block text-xs text-gray-500">WHT Base Amount</label>
+            <input type="number" step="0.01" min="0" name="wht_base_amount" value="87279.9"
+                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="mb-1 block text-xs text-gray-500">WHT Amount</label>
+            <input type="number" step="0.01" min="0" name="wht_amount" value="2618.4"
+                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="mb-1 block text-xs text-gray-500">Net Payable</label>
+            <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+              THB 84,661.50            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs text-gray-500">Accounting Note</label>
+          <textarea name="note" rows="3" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">Accounting review completed in E2E</textarea>
+        </div>
+
+        
+        <button class="theme-btn-secondary rounded-lg px-4 py-2 text-sm font-medium">Save Review Details</button>
+      </form>
+    </div>
+
+    <div class="rounded-xl border bg-white p-5">
+      <h3 class="mb-3 font-semibold text-gray-700">AP Invoice Items (2)</h3>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b bg-gray-50 text-left text-xs text-gray-500">
+            <th class="px-3 py-2">Invoice No.</th>
+            <th class="px-3 py-2">Reference</th>
+            <th class="px-3 py-2">PO / GRPO</th>
+            <th class="px-3 py-2">Invoice Date</th>
+            <th class="px-3 py-2 text-right">Amount</th>
+            <th class="px-3 py-2 text-right">WHT</th>
+            <th class="px-3 py-2 text-right">Net</th>
+          </tr>
+        </thead>
+        <tbody>
+                    <tr class="border-b last:border-0">
+            <td class="px-3 py-2 font-mono text-xs">126030065</td>
+            <td class="px-3 py-2 text-xs text-gray-500">126030065</td>
+            <td class="px-3 py-2 text-xs text-gray-500">126020129 / 26030010</td>
+            <td class="px-3 py-2 text-xs">02/03/2026</td>
+            <td class="px-3 py-2 text-right">11,523.90</td>
+            <td class="px-3 py-2 text-right text-amber-700">345.72</td>
+            <td class="px-3 py-2 text-right font-semibold text-gray-400">
+              11,178.18            </td>
+          </tr>
+                    <tr class="border-b last:border-0">
+            <td class="px-3 py-2 font-mono text-xs">126030064</td>
+            <td class="px-3 py-2 text-xs text-gray-500">126030064</td>
+            <td class="px-3 py-2 text-xs text-gray-500">126020048 / 26030009</td>
+            <td class="px-3 py-2 text-xs">02/03/2026</td>
+            <td class="px-3 py-2 text-right">75,756.00</td>
+            <td class="px-3 py-2 text-right text-amber-700">2,272.68</td>
+            <td class="px-3 py-2 text-right font-semibold text-gray-400">
+              73,483.32            </td>
+          </tr>
+                  </tbody>
+      </table>
+    </div>
+
+    <div class="rounded-xl border bg-white p-5">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-700">Documents (6)</h3>
+        <form method="POST" action="http://localhost/Alumet/alumet-payment-control/api/attachments.php" enctype="multipart/form-data" class="flex items-center gap-2">
+          <input type="hidden" name="related_type" value="payment_request">
+          <input type="hidden" name="related_id" value="2">
+          <input type="file" name="attachment" class="rounded border border-gray-300 px-2 py-1 text-xs">
+          <select name="doc_type" class="rounded border border-gray-300 px-2 py-1 text-xs">
+            <option value="Invoice">Invoice</option>
+            <option value="PO">PO</option>
+            <option value="GRPO">GRPO</option>
+            <option value="Tax Invoice">Tax Invoice</option>
+            <option value="Payment Proof">Payment Proof</option>
+            <option value="Other">Other</option>
+          </select>
+          <button type="submit" class="theme-btn-primary rounded px-3 py-1 text-xs">Upload</button>
+        </form>
+      </div>
+            <div class="space-y-2">
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 p-2 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="text-gray-400">File</span>
+            <div>
+              <p class="font-medium">proof.pdf</p>
+              <p class="text-xs text-gray-400">Payment Proof | Finance Manager | 09/06/2026 14:18</p>
+            </div>
+          </div>
+          <a href="http://localhost/Alumet/alumet-payment-control/uploads/attachments/att_6a27be4e3ac079.22115096.pdf" target="_blank" class="text-xs hover:underline" style="color:#003B5C;">Download</a>
+        </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 p-2 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="text-gray-400">File</span>
+            <div>
+              <p class="font-medium">payment_proof.pdf</p>
+              <p class="text-xs text-gray-400">Payment Proof | Finance Manager | 09/06/2026 14:17</p>
+            </div>
+          </div>
+          <a href="http://localhost/Alumet/alumet-payment-control/uploads/attachments/att_6a27be12e66d81.16488924.pdf" target="_blank" class="text-xs hover:underline" style="color:#003B5C;">Download</a>
+        </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 p-2 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="text-gray-400">File</span>
+            <div>
+              <p class="font-medium">Tax_Invoice.pdf</p>
+              <p class="text-xs text-gray-400">Tax Invoice | Finance Maker | 09/06/2026 14:17</p>
+            </div>
+          </div>
+          <a href="http://localhost/Alumet/alumet-payment-control/uploads/attachments/att_6a27be1125b862.51699688.pdf" target="_blank" class="text-xs hover:underline" style="color:#003B5C;">Download</a>
+        </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 p-2 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="text-gray-400">File</span>
+            <div>
+              <p class="font-medium">Invoice.pdf</p>
+              <p class="text-xs text-gray-400">Invoice | Finance Maker | 09/06/2026 14:17</p>
+            </div>
+          </div>
+          <a href="http://localhost/Alumet/alumet-payment-control/uploads/attachments/att_6a27be111abc72.61499442.pdf" target="_blank" class="text-xs hover:underline" style="color:#003B5C;">Download</a>
+        </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 p-2 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="text-gray-400">File</span>
+            <div>
+              <p class="font-medium">GRPO.pdf</p>
+              <p class="text-xs text-gray-400">GRPO | Finance Maker | 09/06/2026 14:17</p>
+            </div>
+          </div>
+          <a href="http://localhost/Alumet/alumet-payment-control/uploads/attachments/att_6a27be110fd8f2.14395741.pdf" target="_blank" class="text-xs hover:underline" style="color:#003B5C;">Download</a>
+        </div>
+                <div class="flex items-center justify-between rounded-lg bg-gray-50 p-2 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="text-gray-400">File</span>
+            <div>
+              <p class="font-medium">PO.pdf</p>
+              <p class="text-xs text-gray-400">PO | Finance Maker | 09/06/2026 14:17</p>
+            </div>
+          </div>
+          <a href="http://localhost/Alumet/alumet-payment-control/uploads/attachments/att_6a27be10ef0ae2.96211229.pdf" target="_blank" class="text-xs hover:underline" style="color:#003B5C;">Download</a>
+        </div>
+              </div>
+          </div>
+  </div>
+
+  <div class="space-y-4">
+    <div class="rounded-xl border bg-white p-5">
+      <h3 class="mb-3 font-semibold text-gray-700">Workflow Actions</h3>
+
+            <p class="py-2 text-center text-sm text-gray-400">No actions available for current status</p>
+          </div>
+
+        <div class="rounded-xl border bg-white p-5">
+      <h3 class="mb-3 font-semibold text-gray-700">Approval Pipeline</h3>
+      <div class="space-y-2">
+                <div class="flex items-center gap-2 rounded-lg p-2 bg-green-50">
+          <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs bg-green-500 text-white">
+            1          </div>
+          <div class="flex-1 text-sm">
+            <p class="font-medium">Finance Manager</p>
+            <p class="text-xs text-gray-500">Finance manager approval for E2E</p>          </div>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">approved</span>        </div>
+              </div>
+    </div>
+    
+    <div class="rounded-xl border bg-white p-5">
+      <h3 class="mb-3 font-semibold text-gray-700">History</h3>
+            <div class="space-y-3">
+                <div class="flex gap-3">
+          <div class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full" style="background:#006B3F;"></div>
+          <div>
+            <p class="text-sm font-medium">Finance Manager - <span class="font-mono text-xs">MARK_PAID</span></p>
+                        <p class="mt-0.5 text-xs text-gray-400">09/06/2026 14:18</p>
+          </div>
+        </div>
+                <div class="flex gap-3">
+          <div class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full" style="background:#006B3F;"></div>
+          <div>
+            <p class="text-sm font-medium">Finance Manager - <span class="font-mono text-xs">APPROVE</span></p>
+            <p class="mt-0.5 text-xs text-gray-500">"Finance manager approval for E2E"</p>            <p class="mt-0.5 text-xs text-gray-400">09/06/2026 14:18</p>
+          </div>
+        </div>
+                <div class="flex gap-3">
+          <div class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full" style="background:#006B3F;"></div>
+          <div>
+            <p class="text-sm font-medium">Finance Checker - <span class="font-mono text-xs">SEND_FOR_APPROVAL</span></p>
+            <p class="mt-0.5 text-xs text-gray-500">"Finance review complete"</p>            <p class="mt-0.5 text-xs text-gray-400">09/06/2026 14:17</p>
+          </div>
+        </div>
+                <div class="flex gap-3">
+          <div class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full" style="background:#006B3F;"></div>
+          <div>
+            <p class="text-sm font-medium">Finance Maker - <span class="font-mono text-xs">SUBMIT_FINANCE_REVIEW</span></p>
+                        <p class="mt-0.5 text-xs text-gray-400">09/06/2026 14:17</p>
+          </div>
+        </div>
+                <div class="flex gap-3">
+          <div class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full" style="background:#006B3F;"></div>
+          <div>
+            <p class="text-sm font-medium">Finance Maker - <span class="font-mono text-xs">RESUBMIT</span></p>
+                        <p class="mt-0.5 text-xs text-gray-400">09/06/2026 14:17</p>
+          </div>
+        </div>
+                <div class="flex gap-3">
+          <div class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full" style="background:#006B3F;"></div>
+          <div>
+            <p class="text-sm font-medium">Finance Checker - <span class="font-mono text-xs">RETURN</span></p>
+            <p class="mt-0.5 text-xs text-gray-500">"E2E return test"</p>            <p class="mt-0.5 text-xs text-gray-400">09/06/2026 14:17</p>
+          </div>
+        </div>
+                <div class="flex gap-3">
+          <div class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full" style="background:#006B3F;"></div>
+          <div>
+            <p class="text-sm font-medium">Finance Maker - <span class="font-mono text-xs">SUBMIT_FINANCE_REVIEW</span></p>
+                        <p class="mt-0.5 text-xs text-gray-400">09/06/2026 14:17</p>
+          </div>
+        </div>
+                <div class="flex gap-3">
+          <div class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full" style="background:#006B3F;"></div>
+          <div>
+            <p class="text-sm font-medium">Finance Maker - <span class="font-mono text-xs">SUBMIT_DOCUMENTS</span></p>
+                        <p class="mt-0.5 text-xs text-gray-400">09/06/2026 14:17</p>
+          </div>
+        </div>
+              </div>
+          </div>
+  </div>
+</div>
+
+  </main>
+</div>
+
+<script>
+// Initialize all DataTables
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.datatable').forEach(function(el) {
+        $(el).DataTable({
+            language: {
+                search: 'ค้นหา:',
+                lengthMenu: 'แสดง _MENU_ รายการ',
+                info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ',
+                infoEmpty: 'ไม่พบข้อมูล',
+                zeroRecords: 'ไม่พบข้อมูล',
+                paginate: { first: 'แรก', last: 'สุดท้าย', next: 'ถัดไป', previous: 'ก่อนหน้า' }
+            },
+            pageLength: 25,
+        });
+    });
+});
+</script>
+</body>
+</html>

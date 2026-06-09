@@ -126,6 +126,10 @@ function initializeDB(PDO $pdo): void {
             vendor_code TEXT,
             vendor_name TEXT,
             total_amount REAL DEFAULT 0,
+            gross_amount REAL DEFAULT 0,
+            wht_applicable INTEGER DEFAULT 0,
+            wht_rate REAL DEFAULT 0,
+            wht_base_amount REAL DEFAULT 0,
             wht_amount REAL DEFAULT 0,
             net_payable REAL DEFAULT 0,
             due_date TEXT,
@@ -133,6 +137,17 @@ function initializeDB(PDO $pdo): void {
             status TEXT DEFAULT 'draft',
             priority TEXT DEFAULT 'normal',
             note TEXT,
+            tax_invoice_required INTEGER DEFAULT 1,
+            has_po INTEGER DEFAULT 0,
+            has_grn INTEGER DEFAULT 0,
+            has_invoice INTEGER DEFAULT 0,
+            has_tax_invoice INTEGER DEFAULT 0,
+            return_to TEXT,
+            return_reason TEXT,
+            payment_date TEXT,
+            payment_reference TEXT,
+            payment_bank TEXT,
+            payer_name TEXT,
             created_by INTEGER REFERENCES users(id),
             checked_by INTEGER REFERENCES users(id),
             checked_at TEXT,
@@ -281,7 +296,50 @@ function initializeDB(PDO $pdo): void {
         );
     ");
 
+    runMigrations($pdo);
     seedDefaultData($pdo);
+}
+
+function runMigrations(PDO $pdo): void {
+    ensureColumn($pdo, 'payment_requests', 'gross_amount', "REAL DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'wht_applicable', "INTEGER DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'wht_rate', "REAL DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'wht_base_amount', "REAL DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'tax_invoice_required', "INTEGER DEFAULT 1");
+    ensureColumn($pdo, 'payment_requests', 'has_po', "INTEGER DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'has_grn', "INTEGER DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'has_invoice', "INTEGER DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'has_tax_invoice', "INTEGER DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'return_to', "TEXT");
+    ensureColumn($pdo, 'payment_requests', 'return_reason', "TEXT");
+    ensureColumn($pdo, 'payment_requests', 'payment_date', "TEXT");
+    ensureColumn($pdo, 'payment_requests', 'payment_reference', "TEXT");
+    ensureColumn($pdo, 'payment_requests', 'payment_bank', "TEXT");
+    ensureColumn($pdo, 'payment_requests', 'payer_name', "TEXT");
+
+    $pdo->exec("
+        UPDATE payment_requests
+        SET gross_amount = CASE
+                WHEN COALESCE(gross_amount, 0) = 0 THEN COALESCE(total_amount, 0)
+                ELSE gross_amount
+            END,
+            wht_base_amount = CASE
+                WHEN COALESCE(wht_base_amount, 0) = 0 THEN COALESCE(total_amount, 0)
+                ELSE wht_base_amount
+            END,
+            net_payable = CASE
+                WHEN COALESCE(net_payable, 0) = 0 THEN COALESCE(total_amount, 0) - COALESCE(wht_amount, 0)
+                ELSE net_payable
+            END
+    ");
+}
+
+function ensureColumn(PDO $pdo, string $table, string $column, string $definition): void {
+    $stmt = $pdo->query("PRAGMA table_info({$table})");
+    $columns = array_column($stmt->fetchAll(), 'name');
+    if (!in_array($column, $columns, true)) {
+        $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
+    }
 }
 
 function seedDefaultData(PDO $pdo): void {

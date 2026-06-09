@@ -82,7 +82,7 @@ switch ($report) {
 
         $today = date('Y-m-d');
         $overdueRows = array_filter($data, static fn($row) => !empty($row['due_date']) && $row['due_date'] < $today && $row['status'] !== 'Paid');
-        $readyRows = array_filter($data, static fn($row) => $row['status'] === 'Ready to Pay');
+        $readyRows = array_filter($data, static fn($row) => $row['status'] === 'Approved for Payment');
 
         $totalsByDate = [];
         foreach ($data as $row) {
@@ -94,7 +94,7 @@ switch ($report) {
             ['label' => 'Scheduled Amount', 'value' => fmtMoney((float) array_sum(array_column($data, 'net_payable'))), 'hint' => 'within selected date range'],
             ['label' => 'Requests', 'value' => number_format(count($data)), 'hint' => 'planned outgoing payments'],
             ['label' => 'Overdue', 'value' => number_format(count($overdueRows)), 'hint' => 'past due and not paid'],
-            ['label' => 'Ready to Pay', 'value' => number_format(count($readyRows)), 'hint' => 'can be batched now'],
+            ['label' => 'Approved for Payment', 'value' => number_format(count($readyRows)), 'hint' => 'can be batched now'],
         ];
 
         $chart = [
@@ -162,7 +162,7 @@ switch ($report) {
                    ROUND((julianday(pr.updated_at) - julianday(pr.submitted_at)) * 24, 1) as hours_to_complete,
                    pr.status
             FROM payment_requests pr
-            WHERE pr.status IN ('Approved', 'Rejected', 'Paid')
+            WHERE pr.status IN ('Approved', 'Approved for Payment', 'Rejected', 'Paid')
               AND pr.is_deleted = 0
               AND pr.submitted_at IS NOT NULL
             ORDER BY hours_to_complete DESC
@@ -364,7 +364,7 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
       <div class="rounded-lg p-3" style="background:#ECF1F7;">
         <p class="font-medium" style="color:#003B5C;">Execution</p>
-        <p class="mt-1" style="color:#1C4A63;"><?= number_format(count(array_filter($data, static fn($row) => $row['status'] === 'Ready to Pay'))) ?> requests are already ready for payment.</p>
+        <p class="mt-1" style="color:#1C4A63;"><?= number_format(count(array_filter($data, static fn($row) => $row['status'] === 'Approved for Payment'))) ?> requests are already approved for payment.</p>
       </div>
       <?php elseif ($report === 'paid_unpaid'): ?>
       <div class="rounded-lg bg-emerald-50 p-3">

@@ -16,11 +16,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
     if (empty($prIds)) { flash('error','กรุณาเลือก Payment Request'); redirect(BASE_URL . '/modules/payment_batch/'); }
 
     $phs  = implode(',', array_fill(0, count($prIds), '?'));
-    $prs  = $db->prepare("SELECT * FROM payment_requests WHERE id IN ($phs) AND status='Ready to Pay' AND is_deleted=0");
+    $prs  = $db->prepare("
+        SELECT *
+        FROM payment_requests
+        WHERE id IN ($phs)
+          AND status='Approved for Payment'
+          AND is_deleted=0
+          AND id NOT IN (
+              SELECT payment_request_id
+              FROM payment_batch_items
+          )
+    ");
     $prs->execute($prIds);
     $prs  = $prs->fetchAll();
 
-    if (empty($prs)) { flash('error','ไม่พบ Payment Request ที่ Ready to Pay'); redirect(BASE_URL . '/modules/payment_batch/'); }
+    if (empty($prs)) { flash('error','No payment request is approved for payment'); redirect(BASE_URL . '/modules/payment_batch/'); }
+    if (count($prs) !== count($prIds)) {
+        flash('error', 'One or more selected payment requests are already assigned to another batch');
+        redirect(BASE_URL . '/modules/payment_batch/');
+    }
 
     $totalAmt = array_sum(array_column($prs, 'net_payable'));
     $batchNo  = generateNo('PB', 'payment_batches', 'batch_no');
@@ -32,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
     foreach ($prs as $pr) {
         $db->prepare("INSERT INTO payment_batch_items (payment_batch_id, payment_request_id, amount) VALUES (?,?,?)")
            ->execute([$batchId, $pr['id'], $pr['net_payable']]);
-        $db->prepare("UPDATE payment_requests SET status='Ready to Pay', updated_at=datetime('now','localtime') WHERE id=?")->execute([$pr['id']]);
+        $db->prepare("UPDATE payment_requests SET status='Approved for Payment', updated_at=datetime('now','localtime') WHERE id=?")->execute([$pr['id']]);
     }
 
     auditLog('CREATE_BATCH', 'payment_batch', $batchId, '', "total=$totalAmt count=" . count($prs));
@@ -68,7 +82,17 @@ if ($viewId) {
 $batches = $db->query("SELECT b.*, u.full_name as creator_name FROM payment_batches b LEFT JOIN users u ON u.id=b.created_by ORDER BY b.id DESC LIMIT 50")->fetchAll();
 
 // Available PRs for new batch
-$readyPRs = $db->query("SELECT * FROM payment_requests WHERE status='Ready to Pay' AND is_deleted=0 ORDER BY due_date ASC")->fetchAll();
+$readyPRs = $db->query("
+    SELECT *
+    FROM payment_requests
+    WHERE status='Approved for Payment'
+      AND is_deleted=0
+      AND id NOT IN (
+          SELECT payment_request_id
+          FROM payment_batch_items
+      )
+    ORDER BY due_date ASC
+")->fetchAll();
 
 include ROOT_PATH . '/layouts/header.php';
 ?>
@@ -209,9 +233,9 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
 
       <div class="mb-4">
-        <label class="block text-xs text-gray-500 mb-2">Select Payment Requests (Ready to Pay)</label>
+        <label class="block text-xs text-gray-500 mb-2">Select Payment Requests (Approved for Payment)</label>
         <?php if (empty($readyPRs)): ?>
-        <p class="text-sm text-gray-400 p-3 border rounded-lg text-center">ไม่มี Payment Request ที่ Ready to Pay</p>
+        <p class="text-sm text-gray-400 p-3 border rounded-lg text-center">No payment request is approved for payment</p>
         <?php else: ?>
         <div class="border rounded-lg divide-y max-h-64 overflow-y-auto">
           <?php foreach ($readyPRs as $pr): ?>

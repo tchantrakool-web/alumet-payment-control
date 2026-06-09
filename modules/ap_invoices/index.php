@@ -120,7 +120,7 @@ include ROOT_PATH . '/layouts/header.php';
           <td class="px-4 py-2.5"><?= agingLabel((int)$inv['aging_days']) ?></td>
           <td class="px-4 py-2.5"><?= statusBadge($inv['payment_status']) ?></td>
           <td class="px-4 py-2.5">
-            <?php if (hasRole('admin','maker','finance_manager') && $inv['ap_balance'] > 0 && !in_array($inv['payment_status'],['Paid','Rejected','Cancelled'])): ?>
+            <?php if (hasRole('admin','maker','finance_manager') && $inv['ap_balance'] > 0 && in_array((string)($inv['payment_status'] ?? ''), ['', 'Imported', 'pending', 'Unpaid', 'Outstanding'], true)): ?>
             <a href="<?= BASE_URL ?>/modules/payment_requests/create.php?invoice_id=<?= $inv['id'] ?>"
                class="text-xs text-blue-600 hover:underline whitespace-nowrap">Create PR</a>
             <?php endif; ?>

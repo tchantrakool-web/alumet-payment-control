@@ -51,6 +51,12 @@ function fmtDateTime(?string $dt): string {
 function statusBadge(string $status): string {
     $map = [
         'Imported'          => 'bg-gray-100 text-gray-700',
+        'Pending Documents' => 'bg-slate-100 text-slate-700',
+        'Pending Accounting Review' => 'bg-yellow-100 text-yellow-700',
+        'Pending Finance Review' => 'bg-sky-100 text-sky-700',
+        'Pending Management Approval' => 'bg-orange-100 text-orange-700',
+        'Approved for Payment' => 'bg-teal-100 text-teal-700',
+        'Returned for Correction' => 'bg-rose-100 text-rose-700',
         'Waiting Check'     => 'bg-yellow-100 text-yellow-700',
         'Checked'           => 'bg-blue-100 text-blue-700',
         'Waiting Approval'  => 'bg-orange-100 text-orange-700',

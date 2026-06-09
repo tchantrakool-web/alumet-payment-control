@@ -8,7 +8,7 @@ $today = date('Y-m-d');
 $tomorrow = date('Y-m-d', strtotime('+1 day'));
 $weekEnd = date('Y-m-d', strtotime('+7 days'));
 $monthEnd = date('Y-m-d', strtotime('+30 days'));
-$openRequestStatuses = ['Waiting Check', 'Waiting Approval', 'Approved', 'Ready to Pay'];
+$openRequestStatuses = ['Pending Documents', 'Pending Accounting Review', 'Pending Finance Review', 'Pending Management Approval', 'Approved for Payment', 'Returned for Correction'];
 $closedRequestStatuses = ['Paid', 'Rejected', 'Cancelled', 'draft'];
 
 function compactMoney(float $amount): string {
@@ -105,8 +105,8 @@ $stmtWeekCalendar->execute(array_merge([$today, $weekEnd], $closedRequestStatuse
 $calendarWeek = $stmtWeekCalendar->fetch();
 
 $statusSummary = [
-    ['label' => 'Waiting Approval', 'amount' => (float)($pipelineMap['Waiting Approval']['total_amount'] ?? 0), 'count' => (int)($pipelineMap['Waiting Approval']['request_count'] ?? 0), 'color' => '#F59E0B'],
-    ['label' => 'Ready to Pay', 'amount' => (float)($pipelineMap['Ready to Pay']['total_amount'] ?? 0), 'count' => (int)($pipelineMap['Ready to Pay']['request_count'] ?? 0), 'color' => '#003B5C'],
+    ['label' => 'Pending Approval', 'amount' => (float)($pipelineMap['Pending Management Approval']['total_amount'] ?? 0), 'count' => (int)($pipelineMap['Pending Management Approval']['request_count'] ?? 0), 'color' => '#F59E0B'],
+    ['label' => 'Approved for Payment', 'amount' => (float)($pipelineMap['Approved for Payment']['total_amount'] ?? 0), 'count' => (int)($pipelineMap['Approved for Payment']['request_count'] ?? 0), 'color' => '#003B5C'],
     ['label' => 'Paid', 'amount' => 0.0, 'count' => 0, 'color' => '#006B3F'],
     ['label' => 'Overdue', 'amount' => (float)($overdue['total_amount'] ?? 0), 'count' => (int)($overdue['request_count'] ?? 0), 'color' => '#DC2626'],
     ['label' => 'Rejected', 'amount' => 0.0, 'count' => 0, 'color' => '#9CA3AF'],
@@ -197,7 +197,7 @@ $leadTimeApprove = $db->query("
                    SELECT MIN(ah.created_at)
                    FROM approval_history ah
                    WHERE ah.payment_request_id = pr.id
-                     AND ah.new_status = 'Approved'
+                     AND ah.new_status = 'Approved for Payment'
                ) AS approved_at
         FROM payment_requests pr
         WHERE pr.is_deleted = 0
@@ -225,18 +225,18 @@ $headlineCards = [
         'valueClass' => 'text-emerald-800',
     ],
     [
-        'label' => 'Waiting Approval',
-        'value' => fmtMoney((float)($pipelineMap['Waiting Approval']['total_amount'] ?? 0)),
-        'sub' => number_format((int)($pipelineMap['Waiting Approval']['request_count'] ?? 0)) . ' requests',
-        'compact' => compactMoney((float)($pipelineMap['Waiting Approval']['total_amount'] ?? 0)),
+        'label' => 'Pending Finance Review',
+        'value' => fmtMoney((float)($pipelineMap['Pending Finance Review']['total_amount'] ?? 0)),
+        'sub' => number_format((int)($pipelineMap['Pending Finance Review']['request_count'] ?? 0)) . ' requests',
+        'compact' => compactMoney((float)($pipelineMap['Pending Finance Review']['total_amount'] ?? 0)),
         'classes' => 'bg-amber-50 border-amber-200',
         'valueClass' => 'text-amber-700',
     ],
     [
-        'label' => 'Ready to Pay',
-        'value' => fmtMoney((float)($pipelineMap['Ready to Pay']['total_amount'] ?? 0)),
-        'sub' => number_format((int)($pipelineMap['Ready to Pay']['request_count'] ?? 0)) . ' requests',
-        'compact' => compactMoney((float)($pipelineMap['Ready to Pay']['total_amount'] ?? 0)),
+        'label' => 'Approved for Payment',
+        'value' => fmtMoney((float)($pipelineMap['Approved for Payment']['total_amount'] ?? 0)),
+        'sub' => number_format((int)($pipelineMap['Approved for Payment']['request_count'] ?? 0)) . ' requests',
+        'compact' => compactMoney((float)($pipelineMap['Approved for Payment']['total_amount'] ?? 0)),
         'classes' => 'bg-sky-50 border-sky-200',
         'valueClass' => 'text-sky-800',
     ],
@@ -279,10 +279,10 @@ include ROOT_PATH . '/layouts/header.php';
 
 <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
   <div>
-    <h1 class="text-2xl font-bold text-gray-800">Executive Dashboard</h1>
-    <p class="mt-1 text-sm text-gray-500">Daily payment exposure, approval pipeline, and short-term cash requirement as of <?= date('d/m/Y') ?></p>
+    <h1 class="text-3xl font-bold text-gray-800">Executive Dashboard</h1>
+    <p class="mt-1 text-base text-gray-500">Daily payment exposure, approval pipeline, and short-term cash requirement as of <?= date('d/m/Y') ?></p>
   </div>
-  <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+  <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-base text-emerald-900">
     Pending exposure now aligns to unpaid SAP invoice balances, so the KPI cards match aging and top vendor views.
   </div>
 </div>
@@ -292,11 +292,11 @@ include ROOT_PATH . '/layouts/header.php';
   <div class="rounded-2xl border p-4 <?= $card['classes'] ?>">
     <div class="flex items-start justify-between gap-3">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500"><?= h($card['label']) ?></p>
-        <p class="mt-2 text-2xl font-bold <?= $card['valueClass'] ?>"><?= $card['value'] ?></p>
-        <p class="mt-1 text-sm text-gray-500"><?= h($card['sub']) ?></p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500"><?= h($card['label']) ?></p>
+        <p class="mt-2 text-3xl font-bold <?= $card['valueClass'] ?>"><?= $card['value'] ?></p>
+        <p class="mt-1 text-base text-gray-500"><?= h($card['sub']) ?></p>
       </div>
-      <div class="rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-gray-700 shadow-sm"><?= h($card['compact']) ?></div>
+      <div class="rounded-full bg-white/90 px-3 py-1 text-base font-semibold text-gray-700 shadow-sm"><?= h($card['compact']) ?></div>
     </div>
   </div>
   <?php endforeach; ?>
@@ -307,12 +307,12 @@ include ROOT_PATH . '/layouts/header.php';
   <div class="rounded-2xl border border-gray-200 p-4 shadow-sm">
     <div class="flex items-center justify-between gap-3">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500"><?= h($card['label']) ?></p>
-        <p class="mt-2 text-2xl font-bold <?= $card['accent'] ?>"><?= fmtMoney($card['amount']) ?></p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500"><?= h($card['label']) ?></p>
+        <p class="mt-2 text-3xl font-bold <?= $card['accent'] ?>"><?= fmtMoney($card['amount']) ?></p>
       </div>
       <div class="rounded-xl bg-gray-50 px-3 py-2 text-right">
-        <p class="text-xs text-gray-500">Requests</p>
-        <p class="text-lg font-semibold text-gray-800"><?= number_format($card['count']) ?></p>
+        <p class="text-sm text-gray-500">Requests</p>
+        <p class="text-xl font-semibold text-gray-800"><?= number_format($card['count']) ?></p>
       </div>
     </div>
   </div>
@@ -322,22 +322,24 @@ include ROOT_PATH . '/layouts/header.php';
 <div class="grid grid-cols-1 gap-4 xl:grid-cols-3 mb-6">
   <div class="rounded-2xl border bg-white p-4 shadow-sm">
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-700">Payment Status Summary</h3>
-      <span class="text-xs text-gray-400">amount by status</span>
+      <h3 class="text-base font-semibold text-gray-700">Payment Status Summary</h3>
+      <span class="text-sm text-gray-400">amount by status</span>
     </div>
-    <div class="mt-4">
-      <canvas id="statusChart" height="210"></canvas>
+    <div class="mt-4 flex justify-center">
+      <div class="relative h-44 w-full max-w-[260px]">
+        <canvas id="statusChart"></canvas>
+      </div>
     </div>
     <div class="mt-4 space-y-2">
       <?php foreach ($statusSummary as $item): ?>
-      <div class="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-sm">
+      <div class="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-base">
         <div class="flex items-center gap-2">
           <span class="inline-block h-2.5 w-2.5 rounded-full" style="background-color: <?= h($item['color']) ?>"></span>
-          <span class="font-medium text-gray-700"><?= h($item['label']) ?></span>
+          <span class="font-semibold text-gray-700"><?= h($item['label']) ?></span>
         </div>
         <div class="text-right">
-          <div class="font-semibold text-gray-800"><?= fmtMoney($item['amount']) ?></div>
-          <div class="text-xs text-gray-500"><?= number_format($item['count']) ?> requests</div>
+          <div class="text-lg font-semibold text-gray-800"><?= fmtMoney($item['amount']) ?></div>
+          <div class="text-sm text-gray-500"><?= number_format($item['count']) ?> requests</div>
         </div>
       </div>
       <?php endforeach; ?>
@@ -346,21 +348,25 @@ include ROOT_PATH . '/layouts/header.php';
 
   <div class="rounded-2xl border bg-white p-4 shadow-sm">
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-700">AP Invoice Aging</h3>
-      <span class="text-xs text-gray-400">unpaid SAP balance</span>
+      <h3 class="text-base font-semibold text-gray-700">AP Invoice Aging</h3>
+      <span class="text-sm text-gray-400">unpaid SAP balance</span>
     </div>
     <div class="mt-4">
-      <canvas id="agingChart" height="210"></canvas>
+      <div class="relative h-44 w-full">
+        <canvas id="agingChart"></canvas>
+      </div>
     </div>
   </div>
 
   <div class="rounded-2xl border bg-white p-4 shadow-sm">
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-700">Top Vendor Exposure</h3>
-      <span class="text-xs text-gray-400">highest unpaid balance</span>
+      <h3 class="text-base font-semibold text-gray-700">Top Vendor Exposure</h3>
+      <span class="text-sm text-gray-400">highest unpaid balance</span>
     </div>
     <div class="mt-4">
-      <canvas id="vendorChart" height="210"></canvas>
+      <div class="relative h-44 w-full">
+        <canvas id="vendorChart"></canvas>
+      </div>
     </div>
   </div>
 </div>
@@ -530,10 +536,11 @@ new Chart(document.getElementById('statusChart'), {
     }]
   },
   options: {
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'bottom',
-        labels: { boxWidth: 12, font: { size: 11 } }
+        labels: { boxWidth: 14, padding: 16, font: { size: 13, weight: '600' } }
       },
       tooltip: {
         callbacks: {
@@ -556,12 +563,16 @@ new Chart(document.getElementById('agingChart'), {
     }]
   },
   options: {
+    maintainAspectRatio: false,
     plugins: {
       legend: { display: false }
     },
     scales: {
       y: {
-        ticks: { callback: moneyAxis }
+        ticks: { callback: moneyAxis, font: { size: 12, weight: '600' } }
+      },
+      x: {
+        ticks: { font: { size: 12, weight: '600' } }
       }
     }
   }
@@ -581,13 +592,17 @@ new Chart(document.getElementById('vendorChart'), {
     }]
   },
   options: {
+    maintainAspectRatio: false,
     indexAxis: 'y',
     plugins: {
       legend: { display: false }
     },
     scales: {
       x: {
-        ticks: { callback: moneyAxis }
+        ticks: { callback: moneyAxis, font: { size: 12, weight: '600' } }
+      },
+      y: {
+        ticks: { font: { size: 12, weight: '600' } }
       }
     }
   }
