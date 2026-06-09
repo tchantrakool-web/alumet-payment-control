@@ -4,7 +4,7 @@ This document describes the current operating flow implemented in the applicatio
 
 ## Visual Workflow
 
-![MVP Payment Workflow](assets/mvp-workflow-swimlane.svg?v=20260609-3)
+![MVP Payment Workflow](assets/mvp-workflow-swimlane.svg?v=20260609-4)
 
 Reference file:
 - [mvp-workflow-swimlane.svg](/c:/xampp/htdocs/Alumet/alumet-payment-control/docs/assets/mvp-workflow-swimlane.svg)

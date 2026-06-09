@@ -7,9 +7,9 @@ This version is prepared for business discussion with Procurement, Accounting, F
 
 Open the swimlane image directly from the project:
 
-![MVP Payment Workflow](assets/mvp-workflow-swimlane.svg?v=20260609-3)
+![MVP Payment Workflow](assets/mvp-workflow-swimlane.svg?v=20260609-4)
 
-![Executive Workflow](assets/mvp-workflow-executive-th.svg?v=20260609-3)
+![Executive Workflow](assets/mvp-workflow-executive-th.svg?v=20260609-4)
 
 Reference file:
 - [mvp-workflow-swimlane.svg](/c:/xampp/htdocs/Alumet/alumet-payment-control/docs/assets/mvp-workflow-swimlane.svg)

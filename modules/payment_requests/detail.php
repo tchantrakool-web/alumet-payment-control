@@ -288,8 +288,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $remainingPendingTasks = (int)$remainingPendingTaskStmt->fetchColumn();
         $newStatus = $remainingPendingTasks > 0 ? 'Pending Management Approval' : 'Approved for Payment';
         $statusChanged = true;
-    } elseif ($action === 'return' && !hasRole('maker') && (
-        $oldStatus === 'Pending Finance Review' ||
+    } elseif ($action === 'return' && (
+        (in_array($oldStatus, ['Pending Accounting Review'], true) && hasRole('admin', 'maker', 'finance_manager')) ||
+        ($oldStatus === 'Pending Finance Review' && hasRole('admin', 'checker', 'finance_manager')) ||
         ($oldStatus === 'Pending Management Approval' && $canApproveManagementStep)
     )) {
         $returnTo = trim($_POST['return_to'] ?? '');
@@ -313,8 +314,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SET return_to = ?, return_reason = ?, updated_at = datetime('now','localtime')
             WHERE id = ?
         ")->execute([$returnTo, $returnReason, $id]);
-    } elseif ($action === 'reject' && !hasRole('maker') && (
-        $oldStatus === 'Pending Finance Review' ||
+    } elseif ($action === 'reject' && (
+        (in_array($oldStatus, ['Pending Accounting Review'], true) && hasRole('admin', 'maker', 'finance_manager')) ||
+        ($oldStatus === 'Pending Finance Review' && hasRole('admin', 'checker', 'finance_manager')) ||
         ($oldStatus === 'Pending Management Approval' && $canApproveManagementStep)
     )) {
         if ($comment === '') {
@@ -661,74 +663,89 @@ include ROOT_PATH . '/layouts/header.php';
       <?php if ($request['status'] === 'Pending Documents' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="submit_documents">
-        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">Submit to Accounting Review</button>
+        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">ส่งตรวจสอบฝ่ายบัญชี</button>
       </form>
       <?php elseif ($request['status'] === 'Pending Accounting Review' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="submit_finance_review">
-        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">Submit to Finance Review</button>
+        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">ส่งตรวจสอบฝ่ายการเงิน</button>
+      </form>
+      <form method="POST" class="mt-2 space-y-2">
+        <input type="hidden" name="action" value="return">
+        <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+          <option value="">ส่งกลับไปที่...</option>
+          <option value="Procurement">จัดซื้อ</option>
+          <option value="Accounting">บัญชี</option>
+        </select>
+        <textarea name="return_reason" rows="2" required placeholder="เหตุผลในการตีกลับ..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600">ส่งกลับแก้ไข</button>
+      </form>
+      <form method="POST" class="mt-2">
+        <input type="hidden" name="action" value="reject">
+        <textarea name="comment" rows="2" required placeholder="เหตุผลในการปฏิเสธ..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">ปฏิเสธ</button>
       </form>
       <?php elseif ($request['status'] === 'Pending Finance Review' && hasRole('admin', 'checker', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="send_for_approval">
-        <textarea name="comment" rows="2" placeholder="Finance comment (optional)..." class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">Send for Management Approval</button>
+        <textarea name="comment" rows="2" placeholder="ความเห็นฝ่ายการเงิน (ถ้ามี)..." class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">ส่งอนุมัติผู้บริหาร</button>
       </form>
       <form method="POST" class="mt-2 space-y-2">
         <input type="hidden" name="action" value="return">
         <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          <option value="">Return to...</option>
-          <option value="Procurement">Procurement</option>
-          <option value="Accounting">Accounting</option>
+          <option value="">ส่งกลับไปที่...</option>
+          <option value="Procurement">จัดซื้อ</option>
+          <option value="Accounting">บัญชี</option>
         </select>
-        <textarea name="return_reason" rows="2" required placeholder="Reason for return..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600">Return for Correction</button>
+        <textarea name="return_reason" rows="2" required placeholder="เหตุผลในการตีกลับ..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600">ส่งกลับแก้ไข</button>
       </form>
       <form method="POST" class="mt-2">
         <input type="hidden" name="action" value="reject">
-        <textarea name="comment" rows="2" required placeholder="Reason for rejection..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">Reject</button>
+        <textarea name="comment" rows="2" required placeholder="เหตุผลในการปฏิเสธ..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">ปฏิเสธ</button>
       </form>
       <?php elseif ($request['status'] === 'Pending Management Approval' && $canApproveManagementStep): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="approve">
-        <textarea name="comment" rows="2" placeholder="Approval comment (optional)..." class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium">Approve for Payment</button>
+        <textarea name="comment" rows="2" placeholder="ความเห็นในการอนุมัติ (ถ้ามี)..." class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium">อนุมัติให้จ่าย</button>
       </form>
       <form method="POST" class="mt-2 space-y-2">
         <input type="hidden" name="action" value="return">
         <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          <option value="">Return to...</option>
-          <option value="Procurement">Procurement</option>
-          <option value="Accounting">Accounting</option>
+          <option value="">ส่งกลับไปที่...</option>
+          <option value="Procurement">จัดซื้อ</option>
+          <option value="Accounting">บัญชี</option>
         </select>
-        <textarea name="return_reason" rows="2" required placeholder="Reason for return..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600">Return for Correction</button>
+        <textarea name="return_reason" rows="2" required placeholder="เหตุผลในการตีกลับ..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600">ส่งกลับแก้ไข</button>
       </form>
       <form method="POST" class="mt-2">
         <input type="hidden" name="action" value="reject">
-        <textarea name="comment" rows="2" required placeholder="Reason for rejection..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">Reject</button>
+        <textarea name="comment" rows="2" required placeholder="เหตุผลในการปฏิเสธ..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">ปฏิเสธ</button>
       </form>
       <?php elseif ($request['status'] === 'Pending Management Approval'): ?>
-      <p class="py-2 text-center text-sm text-gray-400">Waiting for the assigned approver in the approval matrix</p>
+      <p class="py-2 text-center text-sm text-gray-400">รอผู้อนุมัติตาม approval matrix ดำเนินการ</p>
       <?php elseif ($request['status'] === 'Returned for Correction' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST">
         <input type="hidden" name="action" value="resubmit">
-        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">Resubmit After Correction</button>
+        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">ส่งกลับเข้ากระบวนการอีกครั้ง</button>
       </form>
       <?php elseif ($request['status'] === 'Approved for Payment' && hasRole('admin', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="mark_paid">
         <input type="date" name="payment_date" value="<?= h((string)$request['payment_date']) ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
-        <input type="text" name="payment_reference" value="<?= h((string)$request['payment_reference']) ?>" placeholder="Payment reference / bank ref / cheque no." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
-        <input type="text" name="payment_bank" value="<?= h((string)$request['payment_bank']) ?>" placeholder="Bank or payment channel" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
-        <input type="text" name="payer_name" value="<?= h((string)$request['payer_name']) ?>" placeholder="Payer name" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
-        <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium">Mark as Paid</button>
+        <input type="text" name="payment_reference" value="<?= h((string)$request['payment_reference']) ?>" placeholder="เลขอ้างอิงการจ่าย / เลขเช็ค / รายการโอน" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
+        <input type="text" name="payment_bank" value="<?= h((string)$request['payment_bank']) ?>" placeholder="ธนาคารหรือช่องทางการจ่าย" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
+        <input type="text" name="payer_name" value="<?= h((string)$request['payer_name']) ?>" placeholder="ผู้ดำเนินการจ่าย" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
+        <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium">บันทึกเป็นจ่ายแล้ว</button>
       </form>
-      <p class="mt-2 text-xs text-gray-500">Upload a <span class="font-medium">Payment Proof</span> document before marking paid.</p>
+      <p class="mt-2 text-xs text-gray-500">กรุณาแนบเอกสาร <span class="font-medium">หลักฐานการจ่าย</span> ก่อนบันทึกเป็นจ่ายแล้ว</p>
       <?php else: ?>
-      <p class="py-2 text-center text-sm text-gray-400">No actions available for current status</p>
+      <p class="py-2 text-center text-sm text-gray-400">ไม่มีรายการที่ดำเนินการได้ในสถานะปัจจุบัน</p>
       <?php endif; ?>
     </div>
 

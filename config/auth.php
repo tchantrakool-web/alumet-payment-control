@@ -38,7 +38,7 @@ function canAccess(string $module): bool {
     $role = $_SESSION['role_name'] ?? '';
     $map = [
         'import'          => ['admin', 'maker', 'finance_manager'],
-        'ap_invoices'     => ['admin', 'maker', 'checker', 'finance_manager'],
+        'ap_invoices'     => ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
         'payment_requests'=> ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
         'approval'        => ['admin', 'checker', 'approver', 'finance_manager', 'executive'],
         'payment_batch'   => ['admin', 'finance_manager'],

@@ -181,21 +181,15 @@ foreach ($vendors as $vendor) {
     $vendorMap[$key] = (int)$vendor['id'];
 }
 
-$availableStatuses = ['Imported', 'pending', 'Unpaid', 'Outstanding'];
-$placeholders = implode(',', array_fill(0, count($availableStatuses), '?'));
 $stmtInvoices = $db->prepare("
     SELECT *
     FROM sap_ap_invoices
     WHERE is_deleted = 0
       AND ap_balance > 0
-      AND (
-        payment_status IN ($placeholders)
-        OR payment_status IS NULL
-        OR payment_status = ''
-      )
+      AND COALESCE(payment_status, '') NOT IN ('Pending Documents', 'Paid', 'Rejected', 'Cancelled')
     ORDER BY vendor_name, ap_invoice_date, ap_invoice_doc_num
 ");
-$stmtInvoices->execute($availableStatuses);
+$stmtInvoices->execute();
 $invoices = $stmtInvoices->fetchAll();
 
 $invoicesByVendor = [];
