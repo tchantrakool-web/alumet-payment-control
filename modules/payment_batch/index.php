@@ -1,0 +1,242 @@
+<?php
+require_once __DIR__ . '/../../config/bootstrap.php';
+requireLogin();
+if (!canAccess('payment_batch')) { flash('error','Access denied'); redirect(BASE_URL . '/dashboard.php'); }
+$pageTitle = 'Payment Batch';
+$db   = getDB();
+$user = currentUser();
+
+// Handle create batch
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_batch') {
+    $prIds    = $_POST['pr_ids'] ?? [];
+    $batchDate = trim($_POST['batch_date'] ?? date('Y-m-d'));
+    $payType  = trim($_POST['payment_type'] ?? 'cheque');
+    $note     = trim($_POST['note'] ?? '');
+
+    if (empty($prIds)) { flash('error','กรุณาเลือก Payment Request'); redirect(BASE_URL . '/modules/payment_batch/'); }
+
+    $phs  = implode(',', array_fill(0, count($prIds), '?'));
+    $prs  = $db->prepare("SELECT * FROM payment_requests WHERE id IN ($phs) AND status='Ready to Pay' AND is_deleted=0");
+    $prs->execute($prIds);
+    $prs  = $prs->fetchAll();
+
+    if (empty($prs)) { flash('error','ไม่พบ Payment Request ที่ Ready to Pay'); redirect(BASE_URL . '/modules/payment_batch/'); }
+
+    $totalAmt = array_sum(array_column($prs, 'net_payable'));
+    $batchNo  = generateNo('PB', 'payment_batches', 'batch_no');
+
+    $db->prepare("INSERT INTO payment_batches (batch_no, batch_date, payment_type, total_amount, status, note, created_by) VALUES (?,?,?,?,?,?,?)")
+       ->execute([$batchNo, $batchDate, $payType, $totalAmt, 'draft', $note, $user['id']]);
+    $batchId = $db->lastInsertId();
+
+    foreach ($prs as $pr) {
+        $db->prepare("INSERT INTO payment_batch_items (payment_batch_id, payment_request_id, amount) VALUES (?,?,?)")
+           ->execute([$batchId, $pr['id'], $pr['net_payable']]);
+        $db->prepare("UPDATE payment_requests SET status='Ready to Pay', updated_at=datetime('now','localtime') WHERE id=?")->execute([$pr['id']]);
+    }
+
+    auditLog('CREATE_BATCH', 'payment_batch', $batchId, '', "total=$totalAmt count=" . count($prs));
+    flash('success', "Payment Batch {$batchNo} สร้างสำเร็จ — ฿" . fmtMoney($totalAmt));
+    redirect(BASE_URL . '/modules/payment_batch/?id=' . $batchId);
+}
+
+// Lock batch
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'lock_batch') {
+    $batchId = (int)($_POST['batch_id'] ?? 0);
+    $db->prepare("UPDATE payment_batches SET is_locked=1, status='locked', locked_by=?, locked_at=datetime('now','localtime'), updated_at=datetime('now','localtime') WHERE id=? AND is_locked=0")
+       ->execute([$user['id'], $batchId]);
+    auditLog('LOCK_BATCH', 'payment_batch', $batchId);
+    flash('success', 'Batch ถูก Lock แล้ว ไม่สามารถแก้ไขได้');
+    redirect(BASE_URL . '/modules/payment_batch/?id=' . $batchId);
+}
+
+$viewId = (int)($_GET['id'] ?? 0);
+$viewBatch = null;
+$batchItems = [];
+if ($viewId) {
+    $viewBatch = $db->prepare("SELECT b.*, u.full_name as creator_name, l.full_name as locker_name FROM payment_batches b LEFT JOIN users u ON u.id=b.created_by LEFT JOIN users l ON l.id=b.locked_by WHERE b.id=?")->execute([$viewId])
+                 ? null : null;
+    $stmtB = $db->prepare("SELECT b.*, u.full_name as creator_name, l.full_name as locker_name FROM payment_batches b LEFT JOIN users u ON u.id=b.created_by LEFT JOIN users l ON l.id=b.locked_by WHERE b.id=?");
+    $stmtB->execute([$viewId]);
+    $viewBatch = $stmtB->fetch();
+
+    $stmtI = $db->prepare("SELECT bi.*, pr.request_no, pr.vendor_name, pr.due_date, pr.status as pr_status FROM payment_batch_items bi JOIN payment_requests pr ON pr.id=bi.payment_request_id WHERE bi.payment_batch_id=?");
+    $stmtI->execute([$viewId]);
+    $batchItems = $stmtI->fetchAll();
+}
+
+$batches = $db->query("SELECT b.*, u.full_name as creator_name FROM payment_batches b LEFT JOIN users u ON u.id=b.created_by ORDER BY b.id DESC LIMIT 50")->fetchAll();
+
+// Available PRs for new batch
+$readyPRs = $db->query("SELECT * FROM payment_requests WHERE status='Ready to Pay' AND is_deleted=0 ORDER BY due_date ASC")->fetchAll();
+
+include ROOT_PATH . '/layouts/header.php';
+?>
+
+<div class="mb-5">
+  <h1 class="text-2xl font-bold text-gray-800">Payment Batch</h1>
+  <p class="text-gray-500 text-sm">สร้างและจัดการ Payment Batch สำหรับเตรียมจ่ายเงิน</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+  <!-- Batch List -->
+  <div>
+    <div class="bg-white rounded-xl border overflow-hidden">
+      <div class="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-700 text-sm">Batches</h3>
+        <button onclick="document.getElementById('createBatchModal').classList.remove('hidden')"
+                class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ New Batch</button>
+      </div>
+      <div class="divide-y max-h-96 overflow-y-auto">
+        <?php foreach ($batches as $b): ?>
+        <a href="?id=<?= $b['id'] ?>" class="block px-4 py-3 hover:bg-gray-50 <?= $viewId == $b['id'] ? 'bg-blue-50 border-l-4 border-blue-600' : '' ?>">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-xs font-semibold"><?= h($b['batch_no']) ?></span>
+            <?= statusBadge($b['status']) ?>
+          </div>
+          <div class="text-xs text-gray-500 mt-0.5">฿<?= fmtMoney($b['total_amount']) ?> | <?= fmtDate($b['batch_date']) ?></div>
+          <?php if ($b['is_locked']): ?>
+          <div class="text-xs text-orange-500 mt-0.5">🔒 Locked</div>
+          <?php endif; ?>
+        </a>
+        <?php endforeach; ?>
+        <?php if (empty($batches)): ?>
+        <div class="px-4 py-6 text-center text-sm text-gray-400">No batches yet</div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Detail -->
+  <div class="lg:col-span-2">
+    <?php if ($viewBatch): ?>
+    <div class="bg-white rounded-xl border p-5">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h3 class="text-lg font-bold text-gray-800"><?= h($viewBatch['batch_no']) ?></h3>
+          <p class="text-sm text-gray-500">Created by <?= h($viewBatch['creator_name'] ?? '') ?> | <?= fmtDateTime($viewBatch['created_at']) ?></p>
+        </div>
+        <div class="text-right">
+          <p class="text-2xl font-bold text-blue-700">฿<?= fmtMoney($viewBatch['total_amount']) ?></p>
+          <?= statusBadge($viewBatch['status']) ?>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 mb-4 text-sm">
+        <div><p class="text-xs text-gray-500">Batch Date</p><p class="font-medium"><?= fmtDate($viewBatch['batch_date']) ?></p></div>
+        <div><p class="text-xs text-gray-500">Payment Type</p><p class="font-medium capitalize"><?= h($viewBatch['payment_type']) ?></p></div>
+        <div><p class="text-xs text-gray-500">Locked</p>
+          <p class="font-medium"><?= $viewBatch['is_locked'] ? '🔒 Yes — ' . h($viewBatch['locker_name'] ?? '') : 'No' ?></p>
+        </div>
+      </div>
+
+      <?php if (!$viewBatch['is_locked']): ?>
+      <form method="POST" class="mb-4">
+        <input type="hidden" name="action" value="lock_batch">
+        <input type="hidden" name="batch_id" value="<?= $viewBatch['id'] ?>">
+        <button class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+          🔒 Lock Batch
+        </button>
+      </form>
+      <?php endif; ?>
+
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-gray-500 border-b bg-gray-50">
+          <th class="px-3 py-2">Request No.</th>
+          <th class="px-3 py-2">Vendor</th>
+          <th class="px-3 py-2">Due Date</th>
+          <th class="px-3 py-2 text-right">Amount</th>
+          <th class="px-3 py-2">Status</th>
+        </tr></thead>
+        <tbody>
+          <?php foreach ($batchItems as $item): ?>
+          <tr class="border-b last:border-0">
+            <td class="px-3 py-2 font-mono text-xs">
+              <a href="<?= BASE_URL ?>/modules/payment_requests/detail.php?id=<?= $item['payment_request_id'] ?>" class="text-blue-600 hover:underline">
+                <?= h($item['request_no']) ?>
+              </a>
+            </td>
+            <td class="px-3 py-2"><?= h($item['vendor_name']) ?></td>
+            <td class="px-3 py-2 text-xs"><?= fmtDate($item['due_date']) ?></td>
+            <td class="px-3 py-2 text-right font-semibold">฿<?= fmtMoney($item['amount']) ?></td>
+            <td class="px-3 py-2"><?= statusBadge($item['pr_status']) ?></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+        <tfoot><tr class="bg-gray-50 font-semibold border-t text-sm">
+          <td colspan="3" class="px-3 py-2">Total (<?= count($batchItems) ?> items)</td>
+          <td class="px-3 py-2 text-right text-blue-700">฿<?= fmtMoney(array_sum(array_column($batchItems, 'amount'))) ?></td>
+          <td></td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <?php else: ?>
+    <div class="bg-white rounded-xl border p-8 text-center text-gray-400">
+      <p class="text-4xl mb-2">💼</p>
+      <p>เลือก Batch หรือสร้าง Batch ใหม่</p>
+    </div>
+    <?php endif; ?>
+  </div>
+</div>
+
+<!-- Create Batch Modal -->
+<div id="createBatchModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
+    <div class="flex items-center justify-between px-5 py-4 border-b">
+      <h3 class="font-semibold text-gray-800">Create Payment Batch</h3>
+      <button onclick="document.getElementById('createBatchModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form method="POST" class="p-5">
+      <input type="hidden" name="action" value="create_batch">
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Batch Date</label>
+          <input type="date" name="batch_date" value="<?= date('Y-m-d') ?>" required
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Payment Type</label>
+          <select name="payment_type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+            <option value="cheque">Cheque</option>
+            <option value="transfer">Bank Transfer</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs text-gray-500 mb-1">Note</label>
+          <input type="text" name="note" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" placeholder="หมายเหตุ...">
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-xs text-gray-500 mb-2">Select Payment Requests (Ready to Pay)</label>
+        <?php if (empty($readyPRs)): ?>
+        <p class="text-sm text-gray-400 p-3 border rounded-lg text-center">ไม่มี Payment Request ที่ Ready to Pay</p>
+        <?php else: ?>
+        <div class="border rounded-lg divide-y max-h-64 overflow-y-auto">
+          <?php foreach ($readyPRs as $pr): ?>
+          <label class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+            <input type="checkbox" name="pr_ids[]" value="<?= $pr['id'] ?>">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="font-mono text-xs"><?= h($pr['request_no']) ?></span>
+                <span class="font-semibold text-blue-700 text-sm">฿<?= fmtMoney($pr['net_payable']) ?></span>
+              </div>
+              <div class="text-xs text-gray-500 truncate"><?= h($pr['vendor_name']) ?> | Due: <?= fmtDate($pr['due_date']) ?></div>
+            </div>
+          </label>
+          <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+      </div>
+
+      <div class="flex gap-2 justify-end">
+        <button type="button" onclick="document.getElementById('createBatchModal').classList.add('hidden')"
+                class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Create Batch</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<?php include ROOT_PATH . '/layouts/footer.php'; ?>
