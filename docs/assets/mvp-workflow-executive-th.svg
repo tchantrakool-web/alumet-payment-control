@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title desc">
+  <title id="title">ภาพรวม Workflow การจ่ายเงินสำหรับผู้บริหาร</title>
+  <desc id="desc">เวอร์ชันผู้บริหารภาษาไทย ลดรายละเอียด technical และแสดงจุดควบคุมหลักของการจ่ายเงิน</desc>
+  <defs>
+    <style>
+      .bg { fill: #f6f8fb; }
+      .panel { fill: #ffffff; stroke: #d8e2ea; stroke-width: 1.5; }
+      .title { font: 700 30px Arial, sans-serif; fill: #12344d; }
+      .subtitle { font: 400 15px Arial, sans-serif; fill: #587284; }
+      .lane { font: 700 18px Arial, sans-serif; fill: #17384d; }
+      .text { font: 700 16px Arial, sans-serif; fill: #17384d; }
+      .small { font: 400 13px Arial, sans-serif; fill: #587284; }
+      .box { rx: 18; ry: 18; stroke-width: 1.5; }
+      .proc { fill: #e9f7ee; stroke: #7fc59c; }
+      .acct { fill: #eef4fd; stroke: #8fb4e2; }
+      .fin { fill: #fff4e7; stroke: #efbe72; }
+      .appr { fill: #fff0f0; stroke: #e5a3a3; }
+      .pay { fill: #ecf9fb; stroke: #8fcfe0; }
+      .main { stroke: #2f617a; stroke-width: 3; fill: none; marker-end: url(#mainArrow); }
+      .return { stroke: #c05672; stroke-width: 3; fill: none; marker-end: url(#returnArrow); }
+      .note { fill: #f4f1ff; stroke: #b8aaef; stroke-width: 1.5; rx: 16; ry: 16; }
+    </style>
+    <marker id="mainArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#2f617a"/>
+    </marker>
+    <marker id="returnArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#c05672"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="980"/>
+  <text class="title" x="60" y="58">Workflow การจ่ายเงินสำหรับผู้บริหาร</text>
+  <text class="subtitle" x="60" y="84">สรุปเส้นทางหลัก จุดอนุมัติ และจุดควบคุมที่ต้องติดตาม</text>
+
+  <g transform="translate(40,120)">
+    <rect class="panel" x="0" y="0" width="1520" height="790" rx="22"/>
+
+    <text class="lane" x="120" y="40" text-anchor="middle">จัดซื้อ</text>
+    <text class="lane" x="400" y="40" text-anchor="middle">บัญชี / AP</text>
+    <text class="lane" x="680" y="40" text-anchor="middle">การเงินตรวจสอบ</text>
+    <text class="lane" x="960" y="40" text-anchor="middle">ผู้บริหารอนุมัติ</text>
+    <text class="lane" x="1240" y="40" text-anchor="middle">การเงินจ่ายเงิน</text>
+
+    <rect class="box proc" x="40" y="140" width="160" height="86"/>
+    <text class="text" x="120" y="176" text-anchor="middle">จัดเตรียม</text>
+    <text class="text" x="120" y="198" text-anchor="middle">เอกสารจัดซื้อ</text>
+
+    <rect class="box acct" x="320" y="140" width="160" height="86"/>
+    <text class="text" x="400" y="176" text-anchor="middle">ตรวจความครบถ้วน</text>
+    <text class="text" x="400" y="198" text-anchor="middle">และตั้งรายการจ่าย</text>
+
+    <rect class="box fin" x="600" y="140" width="160" height="86"/>
+    <text class="text" x="680" y="176" text-anchor="middle">ตรวจความพร้อมจ่าย</text>
+    <text class="text" x="680" y="198" text-anchor="middle">และความถูกต้อง</text>
+
+    <rect class="box appr" x="880" y="140" width="160" height="86"/>
+    <text class="text" x="960" y="176" text-anchor="middle">อนุมัติตามวงเงิน</text>
+    <text class="text" x="960" y="198" text-anchor="middle">และนโยบายบริษัท</text>
+
+    <rect class="box pay" x="1160" y="140" width="160" height="86"/>
+    <text class="text" x="1240" y="176" text-anchor="middle">จ่ายเงินจริง</text>
+    <text class="text" x="1240" y="198" text-anchor="middle">และปิดรายการ</text>
+
+    <path class="main" d="M200 183 L320 183"/>
+    <path class="main" d="M480 183 L600 183"/>
+    <path class="main" d="M760 183 L880 183"/>
+    <path class="main" d="M1040 183 L1160 183"/>
+
+    <rect class="note" x="300" y="320" width="220" height="100"/>
+    <text class="text" x="410" y="356" text-anchor="middle">จุดควบคุม 1</text>
+    <text class="small" x="410" y="382" text-anchor="middle">เอกสารต้องครบ เช่น PO, GRPO,</text>
+    <text class="small" x="410" y="402" text-anchor="middle">Invoice และข้อมูลภาษีที่เกี่ยวข้อง</text>
+
+    <rect class="note" x="580" y="320" width="220" height="100"/>
+    <text class="text" x="690" y="356" text-anchor="middle">จุดควบคุม 2</text>
+    <text class="small" x="690" y="382" text-anchor="middle">Finance ตรวจ due date, วิธีจ่าย</text>
+    <text class="small" x="690" y="402" text-anchor="middle">และความพร้อมของเงินสด / ธนาคาร</text>
+
+    <rect class="note" x="860" y="320" width="220" height="100"/>
+    <text class="text" x="970" y="356" text-anchor="middle">จุดควบคุม 3</text>
+    <text class="small" x="970" y="382" text-anchor="middle">อนุมัติตาม approval matrix</text>
+    <text class="small" x="970" y="402" text-anchor="middle">และสิทธิ์ของผู้อนุมัติ</text>
+
+    <rect class="note" x="1140" y="320" width="220" height="100"/>
+    <text class="text" x="1250" y="356" text-anchor="middle">จุดควบคุม 4</text>
+    <text class="small" x="1250" y="382" text-anchor="middle">ก่อน Paid ต้องมีหลักฐานการจ่าย</text>
+    <text class="small" x="1250" y="402" text-anchor="middle">วันที่จ่าย และเลขอ้างอิง</text>
+
+    <rect class="note" x="460" y="540" width="260" height="96"/>
+    <text class="text" x="590" y="574" text-anchor="middle">ถ้าเอกสารหรือข้อมูลไม่ครบ</text>
+    <text class="small" x="590" y="600" text-anchor="middle">ระบบต้องตีกลับให้ผู้เกี่ยวข้องแก้ไข</text>
+    <text class="small" x="590" y="620" text-anchor="middle">ก่อนเข้าสู่รอบอนุมัติอีกครั้ง</text>
+
+    <path class="return" d="M680 226 L680 500 L200 500 L200 226"/>
+    <text class="small" x="420" y="492">ตีกลับเพื่อแก้ไข</text>
+
+    <rect class="note" x="880" y="540" width="320" height="96"/>
+    <text class="text" x="1040" y="574" text-anchor="middle">สถานะหลักที่ผู้บริหารควรติดตาม</text>
+    <text class="small" x="1040" y="600" text-anchor="middle">Pending Documents -> Pending Review -></text>
+    <text class="small" x="1040" y="620" text-anchor="middle">Pending Approval -> Approved for Payment -> Paid</text>
+  </g>
+</svg>

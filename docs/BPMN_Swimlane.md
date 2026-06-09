@@ -2,6 +2,13 @@
 
 This document describes the current operating flow implemented in the application after Phase 1 workflow alignment.
 
+## Visual Workflow
+
+![MVP Payment Workflow](assets/mvp-workflow-swimlane.svg?v=20260609-3)
+
+Reference file:
+- [mvp-workflow-swimlane.svg](/c:/xampp/htdocs/Alumet/alumet-payment-control/docs/assets/mvp-workflow-swimlane.svg)
+
 ## Roles / Swimlanes
 
 - `Maker / Finance Staff`

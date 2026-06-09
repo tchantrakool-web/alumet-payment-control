@@ -28,6 +28,8 @@ function sideLink(string $href, string $icon, string $label, string $curDir, str
 <div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Analytics</div>
 <?php sideLink(BASE_URL . '/modules/reports/',           '📈', 'Reports',            $dir, $cur, 'reports'); ?>
 
+<?php sideLink(BASE_URL . '/modules/bpmn/',             'B', 'BPMN Workflow',      $dir, $cur, 'bpmn'); ?>
+
 <?php if (hasRole('admin')): ?>
 <div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Admin</div>
 <?php sideLink(BASE_URL . '/modules/settings/',          '⚙️', 'Settings',           $dir, $cur, 'settings'); ?>

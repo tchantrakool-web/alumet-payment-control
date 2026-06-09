@@ -45,6 +45,7 @@ function canAccess(string $module): bool {
         'cheques'         => ['admin', 'finance_manager'],
         'calendar'        => ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
         'reports'         => ['admin', 'finance_manager', 'executive'],
+        'bpmn'            => ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
         'dashboard'       => ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
         'settings'        => ['admin'],
     ];

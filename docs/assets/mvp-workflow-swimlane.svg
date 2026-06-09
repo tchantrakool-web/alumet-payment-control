@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1120" viewBox="0 0 1680 1120" role="img" aria-labelledby="title desc">
+  <title id="title">แผนภาพขั้นตอนการจ่ายเงิน MVP</title>
+  <desc id="desc">เวอร์ชันปฏิบัติงานภาษาไทย ปรับลูกศรและการวางกล่องให้เรียบ อ่านง่าย และลดเส้นทแยงซ้อนกัน</desc>
+  <defs>
+    <style>
+      .bg { fill: #f5f8fb; }
+      .panel { fill: #ffffff; stroke: #d7e2ea; stroke-width: 1.5; }
+      .grid { stroke: #dbe5ec; stroke-width: 1; }
+      .title { font: 700 28px Arial, sans-serif; fill: #12344d; }
+      .subtitle { font: 400 14px Arial, sans-serif; fill: #557082; }
+      .lane { font: 700 18px Arial, sans-serif; fill: #17384d; }
+      .text { font: 600 14px Arial, sans-serif; fill: #17384d; }
+      .small { font: 400 12px Arial, sans-serif; fill: #5c7485; }
+      .box { rx: 16; ry: 16; stroke-width: 1.5; }
+      .proc { fill: #e9f7ee; stroke: #7fc59c; }
+      .acct { fill: #eef4fd; stroke: #8fb4e2; }
+      .fin { fill: #fff4e7; stroke: #efbe72; }
+      .appr { fill: #fff0f0; stroke: #e5a3a3; }
+      .pay { fill: #ecf9fb; stroke: #8fcfe0; }
+      .sys { fill: #f4f1ff; stroke: #b8aaef; }
+      .decision { fill: #fffdf2; stroke: #dabc5f; stroke-width: 1.5; }
+      .main { stroke: #2f617a; stroke-width: 2.5; fill: none; marker-end: url(#mainArrow); }
+      .return { stroke: #c05672; stroke-width: 2.5; fill: none; marker-end: url(#returnArrow); }
+      .reject { stroke: #c2410c; stroke-width: 2.5; fill: none; marker-end: url(#rejectArrow); }
+      .syslink { stroke: #6f7f8c; stroke-width: 2; fill: none; marker-end: url(#mainArrow); stroke-dasharray: 6 5; }
+    </style>
+    <marker id="mainArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#2f617a"/>
+    </marker>
+    <marker id="returnArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#c05672"/>
+    </marker>
+    <marker id="rejectArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#c2410c"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1680" height="1120"/>
+  <text class="title" x="60" y="56">Workflow การควบคุมการจ่ายเงิน MVP</text>
+  <text class="subtitle" x="60" y="82">เวอร์ชันปฏิบัติงานภาษาไทย ปรับ layout ใหม่ให้ลูกศรสั้นขึ้นและอ่านง่ายจากซ้ายไปขวา</text>
+
+  <g transform="translate(40,110)">
+    <rect class="panel" x="0" y="0" width="1600" height="950" rx="18"/>
+
+    <line class="grid" x1="230" y1="0" x2="230" y2="950"/>
+    <line class="grid" x1="500" y1="0" x2="500" y2="950"/>
+    <line class="grid" x1="770" y1="0" x2="770" y2="950"/>
+    <line class="grid" x1="1040" y1="0" x2="1040" y2="950"/>
+    <line class="grid" x1="1310" y1="0" x2="1310" y2="950"/>
+
+    <text class="lane" x="115" y="34" text-anchor="middle">จัดซื้อ</text>
+    <text class="lane" x="365" y="34" text-anchor="middle">บัญชี / AP</text>
+    <text class="lane" x="635" y="34" text-anchor="middle">การเงินตรวจสอบ</text>
+    <text class="lane" x="905" y="34" text-anchor="middle">ผู้อนุมัติ / ผู้บริหาร</text>
+    <text class="lane" x="1175" y="34" text-anchor="middle">การเงินจ่าย</text>
+    <text class="lane" x="1455" y="34" text-anchor="middle">ระบบ</text>
+
+    <rect class="box proc" x="35" y="90" width="160" height="62"/>
+    <text class="text" x="115" y="116" text-anchor="middle">เตรียม PO และ</text>
+    <text class="text" x="115" y="134" text-anchor="middle">GRN / GRPO</text>
+
+    <rect class="box proc" x="35" y="182" width="160" height="62"/>
+    <text class="text" x="115" y="208" text-anchor="middle">รับ Invoice</text>
+    <text class="text" x="115" y="226" text-anchor="middle">จาก Vendor</text>
+
+    <rect class="box proc" x="35" y="274" width="160" height="68"/>
+    <text class="text" x="115" y="300" text-anchor="middle">ส่งเอกสารประกอบ</text>
+    <text class="text" x="115" y="318" text-anchor="middle">ให้ฝ่ายบัญชี</text>
+
+    <rect class="box proc" x="35" y="658" width="160" height="68"/>
+    <text class="text" x="115" y="684" text-anchor="middle">แก้ไขหรือส่งเอกสาร</text>
+    <text class="text" x="115" y="702" text-anchor="middle">เพิ่มเติม</text>
+
+    <rect class="box acct" x="285" y="90" width="160" height="62"/>
+    <text class="text" x="365" y="116" text-anchor="middle">เลือก SAP AP Invoice</text>
+    <text class="text" x="365" y="134" text-anchor="middle">ที่ยังไม่จ่าย</text>
+
+    <rect class="box acct" x="285" y="182" width="160" height="62"/>
+    <text class="text" x="365" y="208" text-anchor="middle">สร้าง Payment</text>
+    <text class="text" x="365" y="226" text-anchor="middle">Request</text>
+
+    <rect class="box acct" x="285" y="274" width="160" height="74"/>
+    <text class="text" x="365" y="300" text-anchor="middle">แนบ PO / GRPO /</text>
+    <text class="text" x="365" y="318" text-anchor="middle">Invoice และ checklist</text>
+    <text class="small" x="365" y="336" text-anchor="middle">รวม Tax Invoice ถ้าจำเป็น</text>
+
+    <rect class="box acct" x="285" y="378" width="160" height="74"/>
+    <text class="text" x="365" y="404" text-anchor="middle">ตรวจ 3-way match</text>
+    <text class="text" x="365" y="422" text-anchor="middle">และคำนวณ WHT / Net</text>
+    <text class="small" x="365" y="440" text-anchor="middle">Pending Accounting Review</text>
+
+    <rect class="decision" x="305" y="520" width="120" height="120" transform="rotate(45 365 580)"/>
+    <text class="text" x="365" y="570" text-anchor="middle">เอกสารครบ</text>
+    <text class="text" x="365" y="588" text-anchor="middle">หรือไม่</text>
+
+    <rect class="box acct" x="285" y="658" width="160" height="68"/>
+    <text class="text" x="365" y="684" text-anchor="middle">แก้ไขข้อมูลและ</text>
+    <text class="text" x="365" y="702" text-anchor="middle">ส่งตรวจใหม่</text>
+
+    <rect class="box fin" x="555" y="520" width="160" height="74"/>
+    <text class="text" x="635" y="546" text-anchor="middle">ตรวจ due date</text>
+    <text class="text" x="635" y="564" text-anchor="middle">วิธีจ่าย และสภาพคล่อง</text>
+    <text class="small" x="635" y="582" text-anchor="middle">Pending Finance Review</text>
+
+    <rect class="decision" x="575" y="650" width="120" height="120" transform="rotate(45 635 710)"/>
+    <text class="text" x="635" y="700" text-anchor="middle">พร้อมส่งอนุมัติ</text>
+    <text class="text" x="635" y="718" text-anchor="middle">หรือไม่</text>
+
+    <rect class="box appr" x="825" y="520" width="160" height="74"/>
+    <text class="text" x="905" y="546" text-anchor="middle">พิจารณาวงเงิน</text>
+    <text class="text" x="905" y="564" text-anchor="middle">วัตถุประสงค์ เอกสาร</text>
+    <text class="small" x="905" y="582" text-anchor="middle">Pending Management Approval</text>
+
+    <rect class="decision" x="845" y="650" width="120" height="120" transform="rotate(45 905 710)"/>
+    <text class="text" x="905" y="700" text-anchor="middle">อนุมัติ</text>
+    <text class="text" x="905" y="718" text-anchor="middle">หรือไม่</text>
+
+    <rect class="box pay" x="1095" y="650" width="160" height="62"/>
+    <text class="text" x="1175" y="676" text-anchor="middle">สร้าง Payment</text>
+    <text class="text" x="1175" y="694" text-anchor="middle">Batch</text>
+
+    <rect class="box pay" x="1095" y="742" width="160" height="62"/>
+    <text class="text" x="1175" y="768" text-anchor="middle">จ่ายเงินจริงและแนบ</text>
+    <text class="text" x="1175" y="786" text-anchor="middle">หลักฐานการจ่าย</text>
+
+    <rect class="box pay" x="1095" y="834" width="160" height="74"/>
+    <text class="text" x="1175" y="860" text-anchor="middle">บันทึกวันที่จ่าย</text>
+    <text class="text" x="1175" y="878" text-anchor="middle">เลขอ้างอิง ธนาคาร ผู้จ่าย</text>
+    <text class="small" x="1175" y="896" text-anchor="middle">แล้วปิดรายการเป็น Paid</text>
+
+    <rect class="box sys" x="1370" y="182" width="170" height="62"/>
+    <text class="text" x="1455" y="208" text-anchor="middle">สถานะ</text>
+    <text class="text" x="1455" y="226" text-anchor="middle">Pending Documents</text>
+
+    <rect class="box sys" x="1370" y="378" width="170" height="62"/>
+    <text class="text" x="1455" y="404" text-anchor="middle">สถานะ</text>
+    <text class="text" x="1455" y="422" text-anchor="middle">Pending Accounting Review</text>
+
+    <rect class="box sys" x="1370" y="520" width="170" height="62"/>
+    <text class="text" x="1455" y="546" text-anchor="middle">สถานะ</text>
+    <text class="text" x="1455" y="564" text-anchor="middle">Pending Finance Review</text>
+
+    <rect class="box sys" x="1370" y="650" width="170" height="74"/>
+    <text class="text" x="1455" y="676" text-anchor="middle">สร้าง approval task</text>
+    <text class="text" x="1455" y="694" text-anchor="middle">และเปลี่ยนสถานะเป็น</text>
+    <text class="text" x="1455" y="712" text-anchor="middle">Pending Management Approval</text>
+
+    <rect class="box sys" x="1370" y="742" width="170" height="62"/>
+    <text class="text" x="1455" y="768" text-anchor="middle">สถานะ</text>
+    <text class="text" x="1455" y="786" text-anchor="middle">Approved for Payment</text>
+
+    <rect class="box sys" x="1370" y="834" width="170" height="62"/>
+    <text class="text" x="1455" y="860" text-anchor="middle">สถานะ Paid และ</text>
+    <text class="text" x="1455" y="878" text-anchor="middle">อัปเดต AP Invoice</text>
+
+    <rect class="box sys" x="1370" y="90" width="170" height="62"/>
+    <text class="text" x="1455" y="116" text-anchor="middle">Returned for</text>
+    <text class="text" x="1455" y="134" text-anchor="middle">Correction</text>
+
+    <rect class="box sys" x="1370" y="926" width="170" height="62"/>
+    <text class="text" x="1455" y="952" text-anchor="middle">บันทึก Audit Trail</text>
+    <text class="small" x="1455" y="970" text-anchor="middle">ทุกขั้นสำคัญของ workflow</text>
+
+    <rect class="box sys" x="1370" y="276" width="170" height="62"/>
+    <text class="text" x="1455" y="302" text-anchor="middle">Rejected</text>
+    <text class="small" x="1455" y="320" text-anchor="middle">จาก Finance Review</text>
+
+    <rect class="box sys" x="1370" y="600" width="170" height="62"/>
+    <text class="text" x="1455" y="626" text-anchor="middle">Rejected</text>
+    <text class="small" x="1455" y="644" text-anchor="middle">จาก Management Approval</text>
+
+    <path class="main" d="M115 152 L115 182"/>
+    <path class="main" d="M115 244 L115 274"/>
+    <path class="main" d="M195 308 L285 308"/>
+
+    <path class="main" d="M365 152 L365 182"/>
+    <path class="main" d="M365 244 L365 274"/>
+    <path class="main" d="M365 348 L365 378"/>
+    <path class="main" d="M425 580 L555 557"/>
+    <path class="main" d="M635 594 L635 650"/>
+    <path class="main" d="M695 710 L825 710"/>
+    <path class="main" d="M905 594 L905 650"/>
+    <path class="main" d="M965 710 L1095 681"/>
+    <path class="main" d="M1175 712 L1175 742"/>
+    <path class="main" d="M1175 804 L1175 834"/>
+
+    <path class="return" d="M305 580 L230 580 L230 692 L195 692"/>
+    <path class="return" d="M575 710 L500 710 L500 692 L445 692"/>
+    <path class="return" d="M845 710 L500 710 L500 692 L445 692"/>
+
+    <path class="reject" d="M635 770 L635 820 L1370 307"/>
+    <path class="reject" d="M905 770 L905 780 L1370 631"/>
+
+    <path class="syslink" d="M445 213 L1370 213"/>
+    <path class="syslink" d="M445 409 L1370 409"/>
+    <path class="syslink" d="M715 557 L1370 557"/>
+    <path class="syslink" d="M985 557 L1370 687"/>
+    <path class="syslink" d="M1255 773 L1370 773"/>
+    <path class="syslink" d="M1255 871 L1370 865"/>
+    <path class="syslink" d="M1540 121 L365 121 L365 658"/>
+    <path class="syslink" d="M1255 871 L1370 957"/>
+
+    <text class="small" x="248" y="570">ไม่ครบ</text>
+    <text class="small" x="646" y="694">พร้อม</text>
+    <text class="small" x="916" y="694">อนุมัติ</text>
+    <text class="small" x="505" y="694">ตีกลับ</text>
+    <text class="small" x="758" y="694">ตีกลับ</text>
+    <text class="small" x="662" y="812">ปฏิเสธ</text>
+    <text class="small" x="932" y="842">ปฏิเสธ</text>
+
+    <rect x="60" y="1010" width="14" height="14" fill="#eef4fd" stroke="#8fb4e2"/>
+    <text class="small" x="82" y="1022">กิจกรรมของผู้ปฏิบัติงาน</text>
+    <rect x="260" y="1010" width="14" height="14" fill="#fffdf2" stroke="#dabc5f"/>
+    <text class="small" x="282" y="1022">จุดตัดสินใจ</text>
+    <rect x="390" y="1010" width="14" height="14" fill="#f4f1ff" stroke="#b8aaef"/>
+    <text class="small" x="412" y="1022">สถานะหรือการทำงานของระบบ</text>
+    <line class="main" x1="640" y1="1017" x2="680" y2="1017"/>
+    <text class="small" x="692" y="1022">เส้นทางหลักของ workflow</text>
+    <line class="return" x1="900" y1="1017" x2="940" y2="1017"/>
+    <text class="small" x="952" y="1022">เส้นทางตีกลับแก้ไข</text>
+    <line class="reject" x1="1120" y1="1017" x2="1160" y2="1017"/>
+    <text class="small" x="1172" y="1022">เส้นทางปฏิเสธ</text>
+  </g>
+</svg>
