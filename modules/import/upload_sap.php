@@ -4,16 +4,28 @@ require_once ROOT_PATH . '/config/excel_reader.php';
 requireLogin();
 if (!canAccess('import')) { flash('error','Access denied'); redirect(BASE_URL . '/modules/import/'); }
 
+$returnUrl = '/modules/import/';
+if (!empty($_POST['return_url'])) {
+    $candidate = trim($_POST['return_url']);
+    if (str_starts_with($candidate, BASE_URL)) {
+        $candidate = substr($candidate, strlen(BASE_URL));
+    }
+    if (str_starts_with($candidate, '/')) {
+        $returnUrl = $candidate;
+    }
+}
+$redirectUrl = BASE_URL . $returnUrl;
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['excel_file']['tmp_name'])) {
     flash('error', 'กรุณาเลือกไฟล์ก่อน');
-    redirect(BASE_URL . '/modules/import/');
+    redirect($redirectUrl);
 }
 
 $file     = $_FILES['excel_file'];
 $ext      = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 if (!in_array($ext, ['xlsx', 'xls', 'csv'])) {
     flash('error', 'รองรับเฉพาะไฟล์ .xlsx, .xls, .csv');
-    redirect(BASE_URL . '/modules/import/');
+    redirect($redirectUrl);
 }
 
 $uploadDir  = ROOT_PATH . '/uploads/imports/';
@@ -22,7 +34,7 @@ $savedPath  = $uploadDir . $savedName;
 
 if (!move_uploaded_file($file['tmp_name'], $savedPath)) {
     flash('error', 'ไม่สามารถอัปโหลดไฟล์ได้');
-    redirect(BASE_URL . '/modules/import/');
+    redirect($redirectUrl);
 }
 
 try {
@@ -176,4 +188,4 @@ try {
     flash('error', 'Import ล้มเหลว: ' . $e->getMessage());
 }
 
-redirect(BASE_URL . '/modules/import/');
+redirect($redirectUrl);
