@@ -58,15 +58,6 @@ include ROOT_PATH . '/layouts/header.php';
   <?php endif; ?>
 </div>
 
-<div class="flex flex-wrap gap-2 mb-4">
-  <a href="?" class="px-3 py-1.5 rounded-lg border text-sm font-medium <?= !$filterStatus ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 hover:bg-gray-50' ?>">All</a>
-  <?php foreach ($statuses as $s): ?>
-  <a href="?status=<?= urlencode($s) ?>"
-     class="px-3 py-1.5 rounded-lg border text-sm font-medium <?= $filterStatus === $s ? 'theme-btn-primary border-transparent' : 'bg-white text-gray-600 hover:bg-gray-50' ?>">
-    <?= h($s) ?>
-  </a>
-  <?php endforeach; ?>
-</div>
 
 <div class="bg-white rounded-xl border p-4 mb-4">
   <form class="flex flex-wrap gap-3 items-end">

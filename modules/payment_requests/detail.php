@@ -142,6 +142,39 @@ function addHistory(PDO $db, int $paymentRequestId, int $userId, string $action,
     ")->execute([$paymentRequestId, $userId, $action, $comment, $oldStatus, $newStatus]);
 }
 
+function sendCorrectionEmail(PDO $db, array $request, string $correctionDetails, array $checker): void {
+    $stmt = $db->prepare("SELECT id, email, full_name FROM users WHERE id = ?");
+    $stmt->execute([$request['created_by']]);
+    $maker = $stmt->fetch();
+    if (!$maker) return;
+
+    $subject = "[Alumet] Payment Request {$request['request_no']} - Waiting for Correction";
+    $body = "เรียน {$maker['full_name']},\n\n"
+          . "Payment Request เลขที่ {$request['request_no']}\n"
+          . "Vendor: {$request['vendor_name']}\n"
+          . "จำนวนเงิน: THB " . number_format((float)$request['net_payable'], 2) . "\n\n"
+          . "Checker ต้องการให้แก้ไขดังนี้:\n{$correctionDetails}\n\n"
+          . "กรุณาตรวจสอบและแก้ไขเอกสารแล้วส่งใหม่อีกครั้ง\n\n"
+          . "ตรวจสอบโดย: {$checker['full_name']}\n"
+          . "วันที่: " . date('d/m/Y H:i');
+
+    $db->prepare("
+        INSERT INTO notification_logs (related_type, related_id, recipient_id, recipient_email, subject, body, status)
+        VALUES ('payment_request', ?, ?, ?, ?, ?, 'pending')
+    ")->execute([$request['id'], $maker['id'], $maker['email'] ?? '', $subject, $body]);
+
+    if (!empty($maker['email'])) {
+        $headers = "From: no-reply@alumet.co.th\r\nContent-Type: text/plain; charset=UTF-8";
+        $sent = @mail($maker['email'], $subject, $body, $headers);
+        if ($sent) {
+            $db->prepare("
+                UPDATE notification_logs SET status = 'sent', sent_at = datetime('now','localtime')
+                WHERE related_type = 'payment_request' AND related_id = ? ORDER BY id DESC LIMIT 1
+            ")->execute([$request['id']]);
+        }
+    }
+}
+
 function createApprovalTasks(PDO $db, int $paymentRequestId, float $amount): void {
     $db->prepare("DELETE FROM approval_tasks WHERE payment_request_id = ?")->execute([$paymentRequestId]);
     $matrix = $db->prepare("
@@ -246,6 +279,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $attachmentMap = attachmentTypeMap($attachments);
     [$currentChecklist, $checklistErrors] = validateChecklist($request, $attachmentMap);
 
+    // Compute approval state now so approve/return/reject actions below can use it
+    $approvalTasksStmtPost = $db->prepare("
+        SELECT at.*, u.full_name
+        FROM approval_tasks at
+        LEFT JOIN users u ON u.id = at.approver_id
+        WHERE at.payment_request_id = ?
+        ORDER BY at.sequence
+    ");
+    $approvalTasksStmtPost->execute([$id]);
+    $activePendingApprovalTask = null;
+    foreach ($approvalTasksStmtPost->fetchAll() as $_task) {
+        if (($_task['status'] ?? '') !== 'pending') {
+            continue;
+        }
+        if ($activePendingApprovalTask === null || (int)$_task['sequence'] < (int)$activePendingApprovalTask['sequence']) {
+            $activePendingApprovalTask = $_task;
+        }
+    }
+    $currentPendingApprovalTask = null;
+    if ($activePendingApprovalTask !== null && (int)($activePendingApprovalTask['approver_id'] ?? 0) === (int)$user['id']) {
+        $currentPendingApprovalTask = $activePendingApprovalTask;
+    }
+    $canApproveManagementStep = isAdmin() || $currentPendingApprovalTask !== null;
+
     if ($action === 'submit_documents' && hasRole('admin', 'maker', 'finance_manager') && in_array($oldStatus, ['Pending Documents', 'Returned for Correction'], true)) {
         if (!empty($checklistErrors)) {
             flash('error', implode(', ', $checklistErrors));
@@ -260,8 +317,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $newStatus = 'Pending Finance Review';
         $statusChanged = true;
-        $db->prepare("UPDATE payment_requests SET checked_by = ?, checked_at = datetime('now','localtime') WHERE id = ?")
-            ->execute([$user['id'], $id]);
+    } elseif ($action === 'checker_document_review' && hasRole('admin', 'checker', 'finance_manager') && $oldStatus === 'Pending Finance Review') {
+        $poAccepted      = !empty($_POST['po_accepted'])      ? 1 : 0;
+        $poComment       = trim($_POST['po_comment']      ?? '');
+        $invoiceAccepted = !empty($_POST['invoice_accepted']) ? 1 : 0;
+        $invoiceComment  = trim($_POST['invoice_comment'] ?? '');
+        $grAccepted      = !empty($_POST['gr_accepted'])      ? 1 : 0;
+        $grComment       = trim($_POST['gr_comment']      ?? '');
+        $reviewDecision  = trim($_POST['review_decision'] ?? 'save_only');
+
+        $db->prepare("
+            UPDATE payment_requests
+            SET checker_po_accepted = ?, checker_po_comment = ?,
+                checker_invoice_accepted = ?, checker_invoice_comment = ?,
+                checker_gr_accepted = ?, checker_gr_comment = ?,
+                updated_at = datetime('now','localtime')
+            WHERE id = ?
+        ")->execute([$poAccepted, $poComment, $invoiceAccepted, $invoiceComment, $grAccepted, $grComment, $id]);
+
+        if ($reviewDecision === 'document_complete') {
+            if (!$poAccepted || !$invoiceAccepted || !$grAccepted) {
+                flash('error', 'ต้อง Accept เอกสารครบทั้ง 3 ส่วนก่อนกด Document Complete');
+                redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
+            }
+            if (!empty($checklistErrors)) {
+                flash('error', implode(', ', $checklistErrors));
+                redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
+            }
+            $db->prepare("UPDATE payment_requests SET checked_by = ?, checked_at = datetime('now','localtime') WHERE id = ?")
+                ->execute([$user['id'], $id]);
+            createApprovalTasks($db, $id, (float)$request['net_payable']);
+            $newStatus = 'Pending Management Approval';
+            $statusChanged = true;
+            $comment = 'Checker document review complete — all sections accepted';
+        } elseif ($reviewDecision === 'waiting_correction') {
+            $parts = [];
+            if (!$poAccepted && $poComment !== '')      $parts[] = "PO: {$poComment}";
+            if (!$invoiceAccepted && $invoiceComment !== '') $parts[] = "AP Invoice: {$invoiceComment}";
+            if (!$grAccepted && $grComment !== '')      $parts[] = "GR/GRPO: {$grComment}";
+            if (empty($parts)) {
+                flash('error', 'กรุณาระบุ comment สำหรับส่วนที่ต้องแก้ไขก่อนส่ง Waiting for Correction');
+                redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
+            }
+            $correctionMsg = implode(' | ', $parts);
+            $db->prepare("UPDATE payment_requests SET return_to = 'Maker', return_reason = ?, updated_at = datetime('now','localtime') WHERE id = ?")
+                ->execute([$correctionMsg, $id]);
+            sendCorrectionEmail($db, $request, $correctionMsg, $user);
+            $newStatus = 'Returned for Correction';
+            $statusChanged = true;
+            $comment = $correctionMsg;
+        } else {
+            auditLog('CHECKER_REVIEW_SAVE', 'payment_requests', $id, '', 'Checker review progress saved');
+            flash('success', 'บันทึกการตรวจสอบเรียบร้อย');
+            redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
+        }
     } elseif ($action === 'send_for_approval' && hasRole('admin', 'checker', 'finance_manager') && $oldStatus === 'Pending Finance Review') {
         if (!empty($checklistErrors)) {
             flash('error', implode(', ', $checklistErrors));
@@ -654,6 +763,136 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
       <?php endif; ?>
     </div>
+
+    <?php if ($request['status'] === 'Pending Finance Review' && hasRole('admin', 'checker', 'finance_manager')): ?>
+    <?php
+    $poItems      = array_values(array_filter(array_unique(array_column($items, 'po_doc_num'))));
+    $grItems      = array_values(array_filter(array_unique(array_column($items, 'grpo_doc_num'))));
+    $invItems     = array_values(array_filter(array_unique(array_map(static fn($i) => $i['ap_invoice_no'] ?: ($i['sap_inv_no'] ?? ''), $items))));
+    $chkPoAcc     = (int)($request['checker_po_accepted'] ?? 0);
+    $chkInvAcc    = (int)($request['checker_invoice_accepted'] ?? 0);
+    $chkGrAcc     = (int)($request['checker_gr_accepted'] ?? 0);
+    $allDocAcc    = $chkPoAcc && $chkInvAcc && $chkGrAcc;
+    ?>
+    <div class="rounded-xl border-2 border-blue-200 bg-white p-5" id="checker-review">
+      <div class="mb-4 flex items-center gap-2">
+        <span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style="background:#003B5C;">✓</span>
+        <h3 class="font-semibold text-gray-800">Checker Document Review</h3>
+        <?php if ($allDocAcc): ?>
+        <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 font-medium">All Accepted</span>
+        <?php else: ?>
+        <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700"><?= (($chkPoAcc ? 1 : 0) + ($chkInvAcc ? 1 : 0) + ($chkGrAcc ? 1 : 0)) ?>/3 Accepted</span>
+        <?php endif; ?>
+      </div>
+
+      <form method="POST" id="checkerReviewForm" class="space-y-3">
+        <input type="hidden" name="action" value="checker_document_review">
+
+        <!-- PO Section -->
+        <div class="rounded-lg border p-4 <?= $chkPoAcc ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 bg-white' ?>">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-700">1. Purchase Order (PO)</p>
+              <?php if (!empty($poItems)): ?>
+              <p class="mt-0.5 text-xs text-gray-500 font-mono"><?= h(implode(', ', $poItems)) ?></p>
+              <?php else: ?>
+              <p class="mt-0.5 text-xs text-gray-400 italic">ไม่พบเลข PO</p>
+              <?php endif; ?>
+            </div>
+            <label class="flex cursor-pointer items-center gap-1.5 shrink-0">
+              <input type="checkbox" name="po_accepted" value="1" id="po_accepted"
+                     <?= $chkPoAcc ? 'checked' : '' ?>
+                     onchange="toggleDocSection('po', this.checked)"
+                     class="h-4 w-4 accent-emerald-600">
+              <span class="text-sm font-medium <?= $chkPoAcc ? 'text-emerald-700' : 'text-gray-500' ?>">Accept</span>
+            </label>
+          </div>
+          <div id="po_comment_area" class="mt-3 <?= $chkPoAcc ? 'hidden' : '' ?>">
+            <label class="mb-1 block text-xs text-gray-500">Comment — เหตุผลที่ต้องแก้ไข PO</label>
+            <textarea name="po_comment" rows="2"
+                      placeholder="ระบุรายละเอียดที่ต้องแก้ไข..."
+                      class="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"><?= h((string)($request['checker_po_comment'] ?? '')) ?></textarea>
+          </div>
+        </div>
+
+        <!-- AP Invoice Section -->
+        <div class="rounded-lg border p-4 <?= $chkInvAcc ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 bg-white' ?>">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-700">2. AP Invoice</p>
+              <?php if (!empty($invItems)): ?>
+              <p class="mt-0.5 text-xs text-gray-500 font-mono"><?= h(implode(', ', $invItems)) ?></p>
+              <?php else: ?>
+              <p class="mt-0.5 text-xs text-gray-400 italic">ไม่พบเลข AP Invoice</p>
+              <?php endif; ?>
+            </div>
+            <label class="flex cursor-pointer items-center gap-1.5 shrink-0">
+              <input type="checkbox" name="invoice_accepted" value="1" id="invoice_accepted"
+                     <?= $chkInvAcc ? 'checked' : '' ?>
+                     onchange="toggleDocSection('invoice', this.checked)"
+                     class="h-4 w-4 accent-emerald-600">
+              <span class="text-sm font-medium <?= $chkInvAcc ? 'text-emerald-700' : 'text-gray-500' ?>">Accept</span>
+            </label>
+          </div>
+          <div id="invoice_comment_area" class="mt-3 <?= $chkInvAcc ? 'hidden' : '' ?>">
+            <label class="mb-1 block text-xs text-gray-500">Comment — เหตุผลที่ต้องแก้ไข AP Invoice</label>
+            <textarea name="invoice_comment" rows="2"
+                      placeholder="ระบุรายละเอียดที่ต้องแก้ไข..."
+                      class="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"><?= h((string)($request['checker_invoice_comment'] ?? '')) ?></textarea>
+          </div>
+        </div>
+
+        <!-- GR / GRPO Section -->
+        <div class="rounded-lg border p-4 <?= $chkGrAcc ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 bg-white' ?>">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-700">3. Goods Receipt (GR / GRPO)</p>
+              <?php if (!empty($grItems)): ?>
+              <p class="mt-0.5 text-xs text-gray-500 font-mono"><?= h(implode(', ', $grItems)) ?></p>
+              <?php else: ?>
+              <p class="mt-0.5 text-xs text-gray-400 italic">ไม่พบเลข GR/GRPO</p>
+              <?php endif; ?>
+            </div>
+            <label class="flex cursor-pointer items-center gap-1.5 shrink-0">
+              <input type="checkbox" name="gr_accepted" value="1" id="gr_accepted"
+                     <?= $chkGrAcc ? 'checked' : '' ?>
+                     onchange="toggleDocSection('gr', this.checked)"
+                     class="h-4 w-4 accent-emerald-600">
+              <span class="text-sm font-medium <?= $chkGrAcc ? 'text-emerald-700' : 'text-gray-500' ?>">Accept</span>
+            </label>
+          </div>
+          <div id="gr_comment_area" class="mt-3 <?= $chkGrAcc ? 'hidden' : '' ?>">
+            <label class="mb-1 block text-xs text-gray-500">Comment — เหตุผลที่ต้องแก้ไข GR/GRPO</label>
+            <textarea name="gr_comment" rows="2"
+                      placeholder="ระบุรายละเอียดที่ต้องแก้ไข..."
+                      class="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"><?= h((string)($request['checker_gr_comment'] ?? '')) ?></textarea>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-2 pt-2">
+          <button type="submit" name="review_decision" value="save_only"
+                  class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            บันทึก (ยังไม่ตัดสินใจ)
+          </button>
+          <button type="submit" name="review_decision" value="document_complete"
+                  id="btn_doc_complete"
+                  <?= $allDocAcc ? '' : 'disabled' ?>
+                  class="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity <?= $allDocAcc ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-40' ?>"
+                  style="background:#006B3F;">
+            Document Complete →
+          </button>
+          <button type="submit" name="review_decision" value="waiting_correction"
+                  class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600">
+            Waiting for Correction (ส่ง email Maker)
+          </button>
+        </div>
+        <?php if (!$allDocAcc): ?>
+        <p class="text-xs text-gray-400">* กรุณา Accept ครบทั้ง 3 ส่วนเพื่อเปิดใช้ปุ่ม Document Complete</p>
+        <?php endif; ?>
+      </form>
+    </div>
+    <?php endif; ?>
   </div>
 
   <div class="space-y-4">
@@ -686,26 +925,41 @@ include ROOT_PATH . '/layouts/header.php';
         <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">ปฏิเสธ</button>
       </form>
       <?php elseif ($request['status'] === 'Pending Finance Review' && hasRole('admin', 'checker', 'finance_manager')): ?>
-      <form method="POST" class="space-y-2">
-        <input type="hidden" name="action" value="send_for_approval">
-        <textarea name="comment" rows="2" placeholder="ความเห็นฝ่ายการเงิน (ถ้ามี)..." class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">ส่งอนุมัติผู้บริหาร</button>
-      </form>
-      <form method="POST" class="mt-2 space-y-2">
-        <input type="hidden" name="action" value="return">
-        <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          <option value="">ส่งกลับไปที่...</option>
-          <option value="Procurement">จัดซื้อ</option>
-          <option value="Accounting">บัญชี</option>
-        </select>
-        <textarea name="return_reason" rows="2" required placeholder="เหตุผลในการตีกลับ..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600">ส่งกลับแก้ไข</button>
-      </form>
-      <form method="POST" class="mt-2">
-        <input type="hidden" name="action" value="reject">
-        <textarea name="comment" rows="2" required placeholder="เหตุผลในการปฏิเสธ..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">ปฏิเสธ</button>
-      </form>
+      <p class="mb-3 text-sm text-gray-600">ตรวจสอบเอกสารและกรอก Review ด้านล่าง</p>
+      <div class="space-y-1.5 mb-3">
+        <?php
+        $sPoAcc  = (int)($request['checker_po_accepted'] ?? 0);
+        $sInvAcc = (int)($request['checker_invoice_accepted'] ?? 0);
+        $sGrAcc  = (int)($request['checker_gr_accepted'] ?? 0);
+        $docSections = [
+            ['label' => '1. PO',         'accepted' => $sPoAcc],
+            ['label' => '2. AP Invoice',  'accepted' => $sInvAcc],
+            ['label' => '3. GR / GRPO',   'accepted' => $sGrAcc],
+        ];
+        foreach ($docSections as $ds):
+        ?>
+        <div class="flex items-center justify-between rounded px-3 py-2 text-sm
+                    <?= $ds['accepted'] ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200' ?>">
+          <span class="<?= $ds['accepted'] ? 'text-emerald-800' : 'text-amber-800' ?>"><?= $ds['label'] ?></span>
+          <?php if ($ds['accepted']): ?>
+          <span class="text-xs font-semibold text-emerald-600">✓ Accepted</span>
+          <?php else: ?>
+          <span class="text-xs text-amber-600">Pending</span>
+          <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <a href="#checker-review" class="block w-full rounded-lg border border-blue-300 py-2 text-center text-sm text-blue-600 hover:bg-blue-50">
+        ไปยังแบบฟอร์มตรวจสอบ ↓
+      </a>
+      <details class="mt-3">
+        <summary class="cursor-pointer text-xs text-red-500 hover:underline">ตัวเลือกเพิ่มเติม (Reject)</summary>
+        <form method="POST" class="mt-2">
+          <input type="hidden" name="action" value="reject">
+          <textarea name="comment" rows="2" required placeholder="เหตุผลในการปฏิเสธ..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+          <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">ปฏิเสธ (Reject)</button>
+        </form>
+      </details>
       <?php elseif ($request['status'] === 'Pending Management Approval' && $canApproveManagementStep): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="approve">
@@ -790,5 +1044,35 @@ include ROOT_PATH . '/layouts/header.php';
     </div>
   </div>
 </div>
+
+<script>
+function toggleDocSection(section, accepted) {
+    var area = document.getElementById(section + '_comment_area');
+    if (!area) return;
+    if (accepted) {
+        area.classList.add('hidden');
+    } else {
+        area.classList.remove('hidden');
+    }
+    updateDocCompleteBtn();
+}
+
+function updateDocCompleteBtn() {
+    var po      = document.getElementById('po_accepted');
+    var inv     = document.getElementById('invoice_accepted');
+    var gr      = document.getElementById('gr_accepted');
+    var btn     = document.getElementById('btn_doc_complete');
+    if (!btn) return;
+    var allOk = (po && po.checked) && (inv && inv.checked) && (gr && gr.checked);
+    btn.disabled = !allOk;
+    if (allOk) {
+        btn.classList.remove('cursor-not-allowed', 'opacity-40');
+        btn.classList.add('cursor-pointer', 'hover:opacity-90');
+    } else {
+        btn.classList.remove('cursor-pointer', 'hover:opacity-90');
+        btn.classList.add('cursor-not-allowed', 'opacity-40');
+    }
+}
+</script>
 
 <?php include ROOT_PATH . '/layouts/footer.php'; ?>

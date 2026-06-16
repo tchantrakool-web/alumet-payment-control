@@ -294,6 +294,19 @@ function initializeDB(PDO $pdo): void {
             raw_data TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
+
+        CREATE TABLE IF NOT EXISTS notification_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            related_type TEXT,
+            related_id INTEGER,
+            recipient_id INTEGER,
+            recipient_email TEXT,
+            subject TEXT,
+            body TEXT,
+            status TEXT DEFAULT 'pending',
+            sent_at TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        );
     ");
 
     runMigrations($pdo);
@@ -316,6 +329,12 @@ function runMigrations(PDO $pdo): void {
     ensureColumn($pdo, 'payment_requests', 'payment_reference', "TEXT");
     ensureColumn($pdo, 'payment_requests', 'payment_bank', "TEXT");
     ensureColumn($pdo, 'payment_requests', 'payer_name', "TEXT");
+    ensureColumn($pdo, 'payment_requests', 'checker_po_accepted', "INTEGER DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'checker_po_comment', "TEXT");
+    ensureColumn($pdo, 'payment_requests', 'checker_invoice_accepted', "INTEGER DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'checker_invoice_comment', "TEXT");
+    ensureColumn($pdo, 'payment_requests', 'checker_gr_accepted', "INTEGER DEFAULT 0");
+    ensureColumn($pdo, 'payment_requests', 'checker_gr_comment', "TEXT");
 
     $pdo->exec("
         UPDATE payment_requests
