@@ -11,31 +11,31 @@ function sideLink(string $href, string $icon, string $label, string $curDir, str
 ?>
 
 <?php if (canAccess('dashboard')): ?>
-<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-3 pb-1">Dashboard</div>
-<?php sideLink(BASE_URL . '/dashboard.php', 'D', 'Executive Dashboard', $dir, $cur, '', 'dashboard.php'); ?>
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-3 pb-1"><?= t('nav.section.dashboard') ?></div>
+<?php sideLink(BASE_URL . '/dashboard.php', 'D', t('nav.dashboard'), $dir, $cur, '', 'dashboard.php'); ?>
 <?php endif; ?>
 
-<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Maker</div>
-<?php if (canAccess('import')): ?><?php sideLink(BASE_URL . '/modules/import/', 'I', 'Import Center', $dir, $cur, 'import'); ?><?php endif; ?>
-<?php if (canAccess('ap_invoices')): ?><?php sideLink(BASE_URL . '/modules/ap_invoices/', 'A', 'AP Invoice Queue', $dir, $cur, 'ap_invoices'); ?><?php endif; ?>
-<?php if (canAccess('payment_requests')): ?><?php sideLink(BASE_URL . '/modules/payment_requests/', 'P', 'Payment Requests', $dir, $cur, 'payment_requests'); ?><?php endif; ?>
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1"><?= t('nav.section.maker') ?></div>
+<?php if (canAccess('import')): ?><?php sideLink(BASE_URL . '/modules/import/', 'I', t('nav.import'), $dir, $cur, 'import'); ?><?php endif; ?>
+<?php if (canAccess('ap_invoices')): ?><?php sideLink(BASE_URL . '/modules/ap_invoices/', 'A', t('nav.ap_invoices'), $dir, $cur, 'ap_invoices'); ?><?php endif; ?>
+<?php if (canAccess('payment_requests')): ?><?php sideLink(BASE_URL . '/modules/payment_requests/', 'P', t('nav.payment_requests'), $dir, $cur, 'payment_requests'); ?><?php endif; ?>
 
-<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Checker</div>
-<?php if (canAccess('payment_requests')): ?><?php sideLink(BASE_URL . '/modules/payment_requests/', 'R', 'Review Requests', $dir, $cur, 'payment_requests'); ?><?php endif; ?>
-<?php if (canAccess('approval')): ?><?php sideLink(BASE_URL . '/modules/approval/', 'Q', 'Approval Queue', $dir, $cur, 'approval'); ?><?php endif; ?>
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1"><?= t('nav.section.checker') ?></div>
+<?php if (canAccess('payment_requests')): ?><?php sideLink(BASE_URL . '/modules/payment_requests/', 'R', t('nav.review_requests'), $dir, $cur, 'payment_requests'); ?><?php endif; ?>
+<?php if (canAccess('approval')): ?><?php sideLink(BASE_URL . '/modules/approval/', 'Q', t('nav.approval_queue'), $dir, $cur, 'approval'); ?><?php endif; ?>
 
-<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Approver</div>
-<?php if (canAccess('approval')): ?><?php sideLink(BASE_URL . '/modules/approval/', 'A', 'Approve Requests', $dir, $cur, 'approval'); ?><?php endif; ?>
-<?php if (canAccess('payment_requests')): ?><?php sideLink(BASE_URL . '/modules/payment_requests/', 'V', 'View Request Detail', $dir, $cur, 'payment_requests'); ?><?php endif; ?>
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1"><?= t('nav.section.approver') ?></div>
+<?php if (canAccess('approval')): ?><?php sideLink(BASE_URL . '/modules/approval/', 'A', t('nav.approve_requests'), $dir, $cur, 'approval'); ?><?php endif; ?>
+<?php if (canAccess('payment_requests')): ?><?php sideLink(BASE_URL . '/modules/payment_requests/', 'V', t('nav.view_request_detail'), $dir, $cur, 'payment_requests'); ?><?php endif; ?>
 
-<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Monitoring</div>
-<?php if (canAccess('payment_batch')): ?><?php sideLink(BASE_URL . '/modules/payment_batch/', 'B', 'Payment Batch', $dir, $cur, 'payment_batch'); ?><?php endif; ?>
-<?php if (canAccess('cheques')): ?><?php sideLink(BASE_URL . '/modules/cheques/', 'C', 'Cheque Register', $dir, $cur, 'cheques'); ?><?php endif; ?>
-<?php if (canAccess('calendar')): ?><?php sideLink(BASE_URL . '/modules/calendar/', 'K', 'Payment Calendar', $dir, $cur, 'calendar'); ?><?php endif; ?>
-<?php if (canAccess('reports')): ?><?php sideLink(BASE_URL . '/modules/reports/', 'R', 'Reports', $dir, $cur, 'reports'); ?><?php endif; ?>
-<?php if (canAccess('bpmn')): ?><?php sideLink(BASE_URL . '/modules/bpmn/', 'W', 'BPMN Workflow', $dir, $cur, 'bpmn'); ?><?php endif; ?>
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1"><?= t('nav.section.monitoring') ?></div>
+<?php if (canAccess('payment_batch')): ?><?php sideLink(BASE_URL . '/modules/payment_batch/', 'B', t('nav.payment_batch'), $dir, $cur, 'payment_batch'); ?><?php endif; ?>
+<?php if (canAccess('cheques')): ?><?php sideLink(BASE_URL . '/modules/cheques/', 'C', t('nav.cheques'), $dir, $cur, 'cheques'); ?><?php endif; ?>
+<?php if (canAccess('calendar')): ?><?php sideLink(BASE_URL . '/modules/calendar/', 'K', t('nav.calendar'), $dir, $cur, 'calendar'); ?><?php endif; ?>
+<?php if (canAccess('reports')): ?><?php sideLink(BASE_URL . '/modules/reports/', 'R', t('nav.reports'), $dir, $cur, 'reports'); ?><?php endif; ?>
+<?php if (canAccess('bpmn')): ?><?php sideLink(BASE_URL . '/modules/bpmn/', 'W', t('nav.bpmn'), $dir, $cur, 'bpmn'); ?><?php endif; ?>
 
 <?php if (hasRole('admin')): ?>
-<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1">Admin</div>
-<?php sideLink(BASE_URL . '/modules/settings/', 'S', 'Settings', $dir, $cur, 'settings'); ?>
+<div class="sidebar-section text-xs uppercase tracking-wider px-3 pt-4 pb-1"><?= t('nav.section.admin') ?></div>
+<?php sideLink(BASE_URL . '/modules/settings/', 'S', t('nav.settings'), $dir, $cur, 'settings'); ?>
 <?php endif; ?>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="<?= defined('APP_LANG') ? APP_LANG : 'en' ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -95,7 +95,9 @@
   <div class="ml-auto flex items-center gap-3">
     <span class="text-sm" style="color:#D8E7E1;"><?= h(currentUser()['full_name'] ?? '') ?></span>
     <span class="text-xs px-2 py-0.5 rounded-full" style="background:rgba(164,214,94,.18); color:#F5FFE9;"><?= h($_SESSION['role_name'] ?? '') ?></span>
-    <a href="<?= BASE_URL ?>/logout.php" class="text-sm ml-2 hover:text-white transition-colors" style="color:#B8D4C4;">Logout</a>
+    <?php $currentLang = defined('APP_LANG') ? APP_LANG : 'en'; ?>
+    <a href="?lang=<?= $currentLang === 'en' ? 'th' : 'en' ?>" class="text-xs px-2 py-1 rounded border border-white/20 hover:bg-white/10 transition-colors ml-1" style="color:#B8D4C4;" title="Switch language"><?= $currentLang === 'en' ? 'TH' : 'EN' ?></a>
+    <a href="<?= BASE_URL ?>/logout.php" class="text-sm ml-2 hover:text-white transition-colors" style="color:#B8D4C4;"><?= t('auth.logout') ?></a>
   </div>
 </nav>
 

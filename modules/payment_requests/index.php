@@ -47,13 +47,13 @@ include ROOT_PATH . '/layouts/header.php';
 
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
   <div>
-    <h1 class="text-2xl font-bold text-gray-800">Payment Requests</h1>
-    <p class="text-gray-500 text-sm">Request list with invoice references and unpaid outstanding balance.</p>
+    <h1 class="text-2xl font-bold text-gray-800"><?= t('pr.title') ?></h1>
+    <p class="text-gray-500 text-sm"><?= t('pr.subtitle') ?></p>
   </div>
   <?php if (hasRole('admin','maker','finance_manager')): ?>
   <a href="<?= BASE_URL ?>/modules/payment_requests/create.php"
      class="theme-btn-primary px-4 py-2 rounded-lg text-sm font-medium">
-    + New Payment Request
+    <?= t('pr.create') ?>
   </a>
   <?php endif; ?>
 </div>
@@ -62,14 +62,14 @@ include ROOT_PATH . '/layouts/header.php';
 <div class="bg-white rounded-xl border p-4 mb-4">
   <form class="flex flex-wrap gap-3 items-end">
     <div>
-      <label class="block text-xs text-gray-500 mb-1">Vendor</label>
+      <label class="block text-xs text-gray-500 mb-1"><?= t('label.vendor') ?></label>
       <input type="text" name="vendor" value="<?= h($filterVendor) ?>"
              class="theme-input border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-48"
              placeholder="Search vendor...">
     </div>
     <?php if ($filterStatus): ?><input type="hidden" name="status" value="<?= h($filterStatus) ?>"><?php endif; ?>
-    <button type="submit" class="theme-btn-primary px-4 py-1.5 rounded-lg text-sm">Filter</button>
-    <a href="?" class="text-sm text-gray-500 hover:text-gray-700 py-1.5">Reset</a>
+    <button type="submit" class="theme-btn-primary px-4 py-1.5 rounded-lg text-sm"><?= t('btn.filter') ?></button>
+    <a href="?" class="text-sm text-gray-500 hover:text-gray-700 py-1.5"><?= t('btn.reset') ?></a>
   </form>
 </div>
 
@@ -78,16 +78,16 @@ include ROOT_PATH . '/layouts/header.php';
     <table class="w-full text-sm datatable">
       <thead>
         <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide border-b">
-          <th class="px-4 py-3">Request No.</th>
-          <th class="px-4 py-3">Vendor</th>
-          <th class="px-4 py-3">Invoice Ref.</th>
-          <th class="px-4 py-3 text-right">Net Payable</th>
-          <th class="px-4 py-3 text-right">Outstanding</th>
-          <th class="px-4 py-3">Due Date</th>
-          <th class="px-4 py-3">Payment Method</th>
-          <th class="px-4 py-3">Status</th>
-          <th class="px-4 py-3">Created By</th>
-          <th class="px-4 py-3">Created</th>
+          <th class="px-4 py-3"><?= t('label.request_no') ?></th>
+          <th class="px-4 py-3"><?= t('label.vendor') ?></th>
+          <th class="px-4 py-3"><?= t('pr.col.invoice_ref') ?></th>
+          <th class="px-4 py-3 text-right"><?= t('label.net_payable') ?></th>
+          <th class="px-4 py-3 text-right"><?= t('pr.col.outstanding') ?></th>
+          <th class="px-4 py-3"><?= t('label.due_date') ?></th>
+          <th class="px-4 py-3"><?= t('label.payment_method') ?></th>
+          <th class="px-4 py-3"><?= t('label.status') ?></th>
+          <th class="px-4 py-3"><?= t('pr.col.created_by') ?></th>
+          <th class="px-4 py-3"><?= t('label.created') ?></th>
           <th class="px-4 py-3"></th>
         </tr>
       </thead>
@@ -115,7 +115,7 @@ include ROOT_PATH . '/layouts/header.php';
           </td>
           <td class="px-4 py-2.5 text-sm <?= $pr['is_overdue'] ? 'text-red-600 font-semibold' : '' ?>">
             <?= fmtDate($pr['due_date']) ?>
-            <?= $pr['is_overdue'] ? '<span class="text-xs ml-1">Overdue</span>' : '' ?>
+            <?= $pr['is_overdue'] ? '<span class="text-xs ml-1">' . t('pr.overdue') . '</span>' : '' ?>
           </td>
           <td class="px-4 py-2.5 text-xs text-gray-500 capitalize"><?= h($pr['payment_method']) ?></td>
           <td class="px-4 py-2.5"><?= statusBadge($pr['status']) ?></td>
@@ -127,13 +127,13 @@ include ROOT_PATH . '/layouts/header.php';
         </tr>
         <?php endforeach; ?>
         <?php if (empty($requests)): ?>
-        <tr><td colspan="11" class="px-4 py-8 text-center text-gray-400">No payment requests found</td></tr>
+        <tr><td colspan="11" class="px-4 py-8 text-center text-gray-400"><?= t('pr.none') ?></td></tr>
         <?php endif; ?>
       </tbody>
       <?php if (!empty($requests)): ?>
       <tfoot>
         <tr class="bg-gray-50 text-xs font-semibold text-gray-600 border-t">
-          <td colspan="3" class="px-4 py-2">Total (<?= count($requests) ?> requests)</td>
+          <td colspan="3" class="px-4 py-2"><?= t('pr.total') ?> (<?= count($requests) ?> <?= t('pr.requests') ?>)</td>
           <td class="px-4 py-2 text-right" style="color:#003B5C;"><?= fmtMoney(array_sum(array_column($requests, 'net_payable'))) ?></td>
           <td class="px-4 py-2 text-right text-orange-600"><?= fmtMoney(array_sum(array_map(static fn($row) => (float) $row['outstanding_balance'], $requests))) ?></td>
           <td colspan="6"></td>

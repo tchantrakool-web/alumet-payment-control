@@ -14,8 +14,8 @@ include ROOT_PATH . '/layouts/header.php';
 
 <div class="mb-5 flex items-center justify-between">
   <div>
-    <h1 class="text-2xl font-bold text-gray-800">Import Center</h1>
-    <p class="text-gray-500 text-sm">นำเข้าข้อมูลจาก SAP B1 Export และไฟล์เจ้าหนี้ Finance</p>
+    <h1 class="text-2xl font-bold text-gray-800"><?= t('import.title') ?></h1>
+    <p class="text-gray-500 text-sm"><?= t('import.subtitle') ?></p>
   </div>
 </div>
 
@@ -27,22 +27,22 @@ include ROOT_PATH . '/layouts/header.php';
     <div class="flex items-center gap-3 mb-4">
       <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-xl">📊</div>
       <div>
-        <h3 class="font-semibold text-gray-800">SAP B1 Export</h3>
-        <p class="text-xs text-gray-500">Purchase / GRPO / AP Invoice / Payment</p>
+        <h3 class="font-semibold text-gray-800"><?= t('import.sap.title') ?></h3>
+        <p class="text-xs text-gray-500"><?= t('import.sap.desc') ?></p>
       </div>
     </div>
     <form method="POST" action="<?= BASE_URL ?>/modules/import/upload_sap.php" enctype="multipart/form-data">
       <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mb-3 hover:border-blue-400 transition-colors">
         <input type="file" name="excel_file" id="sapFile" accept=".xlsx,.xls,.csv" class="hidden"
-               onchange="document.getElementById('sapName').textContent = this.files[0]?.name || 'ยังไม่ได้เลือกไฟล์'">
+               onchange="document.getElementById('sapName').textContent = this.files[0]?.name || '<?= t('import.sap.click') ?>'">
         <label for="sapFile" class="cursor-pointer">
           <div class="text-2xl mb-1">📁</div>
-          <p class="text-sm text-gray-600" id="sapName">คลิกเพื่อเลือกไฟล์ Excel (.xlsx)</p>
-          <p class="text-xs text-gray-400">รองรับ .xlsx, .xls, .csv</p>
+          <p class="text-sm text-gray-600" id="sapName"><?= t('import.sap.click') ?></p>
+          <p class="text-xs text-gray-400"><?= t('import.supported') ?></p>
         </label>
       </div>
       <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
-        Import SAP Data
+        <?= t('import.sap.btn') ?>
       </button>
     </form>
   </div>
@@ -52,26 +52,26 @@ include ROOT_PATH . '/layouts/header.php';
     <div class="flex items-center gap-3 mb-4">
       <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-green-600 text-xl">📋</div>
       <div>
-        <h3 class="font-semibold text-gray-800">Finance AP File</h3>
-        <p class="text-xs text-gray-500">ไฟล์เจ้าหนี้รายเดือน จากทีม Finance</p>
+        <h3 class="font-semibold text-gray-800"><?= t('import.finance.title') ?></h3>
+        <p class="text-xs text-gray-500"><?= t('import.finance.desc') ?></p>
       </div>
     </div>
     <form method="POST" action="<?= BASE_URL ?>/modules/import/upload_finance.php" enctype="multipart/form-data">
       <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mb-3 hover:border-green-400 transition-colors">
         <input type="file" name="excel_file" id="finFile" accept=".xlsx,.xls,.csv" class="hidden"
-               onchange="document.getElementById('finName').textContent = this.files[0]?.name || 'ยังไม่ได้เลือกไฟล์'">
+               onchange="document.getElementById('finName').textContent = this.files[0]?.name || '<?= t('import.finance.click') ?>'">
         <label for="finFile" class="cursor-pointer">
           <div class="text-2xl mb-1">📁</div>
-          <p class="text-sm text-gray-600" id="finName">คลิกเพื่อเลือกไฟล์ Excel (.xlsx)</p>
-          <p class="text-xs text-gray-400">รองรับ .xlsx, .xls, .csv</p>
+          <p class="text-sm text-gray-600" id="finName"><?= t('import.finance.click') ?></p>
+          <p class="text-xs text-gray-400"><?= t('import.supported') ?></p>
         </label>
       </div>
       <div class="mb-3">
-        <input type="text" name="period" placeholder="ระบุ Period เช่น May 2026"
+        <input type="text" name="period" placeholder="<?= t('import.finance.period_ph') ?>"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-400 outline-none">
       </div>
       <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
-        Import Finance Data
+        <?= t('import.finance.btn') ?>
       </button>
     </form>
   </div>
@@ -82,14 +82,14 @@ include ROOT_PATH . '/layouts/header.php';
 
   <!-- SAP Batches -->
   <div class="bg-white rounded-xl border p-5">
-    <h3 class="font-semibold text-gray-700 mb-3">SAP Import History</h3>
+    <h3 class="font-semibold text-gray-700 mb-3"><?= t('import.sap.history') ?></h3>
     <table class="w-full text-sm">
       <thead><tr class="text-left text-xs text-gray-500 border-b">
-        <th class="pb-2">Batch No.</th>
-        <th class="pb-2">File</th>
-        <th class="pb-2 text-right">Records</th>
-        <th class="pb-2 text-right">Errors</th>
-        <th class="pb-2">Date</th>
+        <th class="pb-2"><?= t('label.batch_no') ?></th>
+        <th class="pb-2"><?= t('import.col.file') ?></th>
+        <th class="pb-2 text-right"><?= t('label.records') ?></th>
+        <th class="pb-2 text-right"><?= t('label.errors') ?></th>
+        <th class="pb-2"><?= t('label.date') ?></th>
       </tr></thead>
       <tbody>
         <?php foreach ($sapBatches as $b): ?>
@@ -101,21 +101,21 @@ include ROOT_PATH . '/layouts/header.php';
           <td class="py-1.5 text-xs text-gray-500"><?= fmtDateTime($b['imported_at']) ?></td>
         </tr>
         <?php endforeach; ?>
-        <?php if (empty($sapBatches)): ?><tr><td colspan="5" class="py-4 text-center text-gray-400">No imports yet</td></tr><?php endif; ?>
+        <?php if (empty($sapBatches)): ?><tr><td colspan="5" class="py-4 text-center text-gray-400"><?= t('msg.no_imports') ?></td></tr><?php endif; ?>
       </tbody>
     </table>
   </div>
 
   <!-- Finance Batches -->
   <div class="bg-white rounded-xl border p-5">
-    <h3 class="font-semibold text-gray-700 mb-3">Finance Import History</h3>
+    <h3 class="font-semibold text-gray-700 mb-3"><?= t('import.finance.history') ?></h3>
     <table class="w-full text-sm">
       <thead><tr class="text-left text-xs text-gray-500 border-b">
-        <th class="pb-2">Batch No.</th>
-        <th class="pb-2">Period</th>
-        <th class="pb-2 text-right">Records</th>
-        <th class="pb-2 text-right">Errors</th>
-        <th class="pb-2">Date</th>
+        <th class="pb-2"><?= t('label.batch_no') ?></th>
+        <th class="pb-2"><?= t('label.period') ?></th>
+        <th class="pb-2 text-right"><?= t('label.records') ?></th>
+        <th class="pb-2 text-right"><?= t('label.errors') ?></th>
+        <th class="pb-2"><?= t('label.date') ?></th>
       </tr></thead>
       <tbody>
         <?php foreach ($finBatches as $b): ?>
@@ -127,7 +127,7 @@ include ROOT_PATH . '/layouts/header.php';
           <td class="py-1.5 text-xs text-gray-500"><?= fmtDateTime($b['imported_at']) ?></td>
         </tr>
         <?php endforeach; ?>
-        <?php if (empty($finBatches)): ?><tr><td colspan="5" class="py-4 text-center text-gray-400">No imports yet</td></tr><?php endif; ?>
+        <?php if (empty($finBatches)): ?><tr><td colspan="5" class="py-4 text-center text-gray-400"><?= t('msg.no_imports') ?></td></tr><?php endif; ?>
       </tbody>
     </table>
   </div>

@@ -17,8 +17,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $bank      = trim($_POST['bank'] ?? '');
         $payee     = trim($_POST['payee_name'] ?? '');
 
-        $pr = $db->prepare("SELECT * FROM payment_requests WHERE id=? AND is_deleted=0")->execute([$prId])
-              ? null : null;
         $stmtPR = $db->prepare("SELECT * FROM payment_requests WHERE id=? AND is_deleted=0");
         $stmtPR->execute([$prId]);
         $pr = $stmtPR->fetch();
@@ -88,18 +86,18 @@ include ROOT_PATH . '/layouts/header.php';
 
 <div class="mb-5 flex items-center justify-between">
   <div>
-    <h1 class="text-2xl font-bold text-gray-800">Cheque Register</h1>
-    <p class="text-gray-500 text-sm">ทะเบียนเช็คและการติดตามสถานะ</p>
+    <h1 class="text-2xl font-bold text-gray-800"><?= t('cheque.title') ?></h1>
+    <p class="text-gray-500 text-sm"><?= t('cheque.subtitle') ?></p>
   </div>
   <button onclick="document.getElementById('createModal').classList.remove('hidden')"
           class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-    + Create Cheque
+    <?= t('cheque.create') ?>
   </button>
 </div>
 
 <!-- Status Filter -->
 <div class="flex flex-wrap gap-2 mb-4">
-  <a href="?" class="px-3 py-1.5 rounded-lg border text-sm <?= !$filterStatus ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 hover:bg-gray-50' ?>">All</a>
+  <a href="?" class="px-3 py-1.5 rounded-lg border text-sm <?= !$filterStatus ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 hover:bg-gray-50' ?>"><?= t('label.all') ?></a>
   <?php foreach ($chequeStatuses as $s): ?>
   <a href="?status=<?= $s ?>" class="px-3 py-1.5 rounded-lg border text-sm <?= $filterStatus === $s ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 hover:bg-gray-50' ?>"><?= ucfirst($s) ?></a>
   <?php endforeach; ?>
@@ -111,16 +109,16 @@ include ROOT_PATH . '/layouts/header.php';
     <table class="w-full text-sm datatable">
       <thead>
         <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide border-b">
-          <th class="px-4 py-3">Cheque No.</th>
-          <th class="px-4 py-3">Date</th>
-          <th class="px-4 py-3">Bank</th>
-          <th class="px-4 py-3">Payee</th>
-          <th class="px-4 py-3 text-right">Amount</th>
-          <th class="px-4 py-3">PR No.</th>
-          <th class="px-4 py-3">Status</th>
-          <th class="px-4 py-3">Receiver</th>
-          <th class="px-4 py-3">Created</th>
-          <th class="px-4 py-3">Actions</th>
+          <th class="px-4 py-3"><?= t('cheque.col.cheque_no') ?></th>
+          <th class="px-4 py-3"><?= t('cheque.col.date') ?></th>
+          <th class="px-4 py-3"><?= t('label.bank') ?></th>
+          <th class="px-4 py-3"><?= t('cheque.col.payee') ?></th>
+          <th class="px-4 py-3 text-right"><?= t('label.amount') ?></th>
+          <th class="px-4 py-3"><?= t('cheque.col.pr_no') ?></th>
+          <th class="px-4 py-3"><?= t('label.status') ?></th>
+          <th class="px-4 py-3"><?= t('cheque.col.receiver') ?></th>
+          <th class="px-4 py-3"><?= t('label.created') ?></th>
+          <th class="px-4 py-3"><?= t('label.actions') ?></th>
         </tr>
       </thead>
       <tbody>
@@ -149,13 +147,13 @@ include ROOT_PATH . '/layouts/header.php';
           <td class="px-4 py-2.5">
             <?php if (!in_array($c['status'], ['received','void','cancelled'])): ?>
             <button onclick="openUpdateModal(<?= $c['id'] ?>, '<?= h($c['cheque_no']) ?>', '<?= $c['status'] ?>')"
-                    class="text-xs text-blue-600 hover:underline">Update Status</button>
+                    class="text-xs text-blue-600 hover:underline"><?= t('cheque.update_status') ?></button>
             <?php endif; ?>
           </td>
         </tr>
         <?php endforeach; ?>
         <?php if (empty($cheques)): ?>
-        <tr><td colspan="10" class="px-4 py-8 text-center text-gray-400">ยังไม่มีข้อมูลเช็ค</td></tr>
+        <tr><td colspan="10" class="px-4 py-8 text-center text-gray-400"><?= t('cheque.no_cheques') ?></td></tr>
         <?php endif; ?>
       </tbody>
     </table>
@@ -166,13 +164,13 @@ include ROOT_PATH . '/layouts/header.php';
 <div id="createModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
   <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
     <div class="flex items-center justify-between px-5 py-4 border-b">
-      <h3 class="font-semibold text-gray-800">Create Cheque</h3>
+      <h3 class="font-semibold text-gray-800"><?= t('cheque.create_title') ?></h3>
       <button onclick="document.getElementById('createModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
     </div>
     <form method="POST" class="p-5 space-y-3">
       <input type="hidden" name="action" value="create_cheque">
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Payment Request</label>
+        <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.select_pr') ?></label>
         <select name="payment_request_id" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
           <option value="">-- เลือก PR --</option>
           <?php foreach ($eligiblePRs as $pr): ?>
@@ -182,7 +180,7 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Cheque No.</label>
+          <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.col.cheque_no') ?></label>
           <input type="text" name="cheque_no" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
         </div>
         <div>
@@ -212,7 +210,7 @@ include ROOT_PATH . '/layouts/header.php';
 <div id="updateModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
   <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
     <div class="flex items-center justify-between px-5 py-4 border-b">
-      <h3 class="font-semibold text-gray-800">Update Cheque Status</h3>
+      <h3 class="font-semibold text-gray-800"><?= t('cheque.update_title') ?></h3>
       <button onclick="document.getElementById('updateModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
     </div>
     <form method="POST" class="p-5 space-y-3">
@@ -220,7 +218,7 @@ include ROOT_PATH . '/layouts/header.php';
       <input type="hidden" name="cheque_id" id="updateChequeId">
       <p class="text-sm text-gray-600">Cheque: <span id="updateChequeNo" class="font-semibold"></span></p>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">New Status</label>
+        <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.new_status') ?></label>
         <select name="new_status" id="updateNewStatus" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
           <option value="prepared">Prepared</option>
           <option value="signed">Signed</option>
@@ -232,17 +230,17 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
       <div id="receiverFields" class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Receiver Name</label>
-          <input type="text" name="receiver_name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" placeholder="ผู้รับเช็ค...">
+          <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.receiver_name') ?></label>
+          <input type="text" name="receiver_name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" placeholder="<?= t('cheque.receiver_name') ?>...">
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Received Date</label>
+          <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.received_date') ?></label>
           <input type="date" name="received_date" value="<?= date('Y-m-d') ?>"
                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
         </div>
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Void Reason (if void/cancel)</label>
+        <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.void_reason') ?></label>
         <input type="text" name="void_reason" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" placeholder="เหตุผล...">
       </div>
       <div class="flex gap-2 justify-end pt-2">

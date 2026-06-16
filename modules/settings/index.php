@@ -133,16 +133,16 @@ include ROOT_PATH . '/layouts/header.php';
 ?>
 
 <div class="mb-6">
-  <h1 class="text-2xl font-bold text-gray-800">Settings</h1>
-  <p class="mt-1 text-sm text-gray-500">Admin controls for company defaults and approval workflow thresholds.</p>
+  <h1 class="text-2xl font-bold text-gray-800"><?= t('settings.title') ?></h1>
+  <p class="mt-1 text-sm text-gray-500"><?= t('settings.subtitle') ?></p>
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
   <div class="xl:col-span-2 rounded-xl border bg-white p-5">
     <div class="mb-4 flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-gray-800">General Settings</h2>
-        <p class="text-sm text-gray-500">Application-level defaults used across the payment control flow.</p>
+        <h2 class="text-lg font-semibold text-gray-800"><?= t('settings.general') ?></h2>
+        <p class="text-sm text-gray-500"><?= t('settings.general_desc') ?></p>
       </div>
     </div>
 
@@ -162,25 +162,25 @@ include ROOT_PATH . '/layouts/header.php';
       <?php endforeach; ?>
 
       <div class="md:col-span-2 flex justify-end">
-        <button type="submit" class="theme-btn-primary rounded-lg px-4 py-2 text-sm font-medium">Save General Settings</button>
+        <button type="submit" class="theme-btn-primary rounded-lg px-4 py-2 text-sm font-medium"><?= t('settings.save_general') ?></button>
       </div>
     </form>
   </div>
 
   <div class="rounded-xl border p-5 text-white" style="background:linear-gradient(135deg, #003B5C 0%, #006B3F 100%); border-color:#0A536F;">
-    <p class="text-xs uppercase tracking-[0.2em]" style="color:#D9F0B4;">Control Summary</p>
+    <p class="text-xs uppercase tracking-[0.2em]" style="color:#D9F0B4;"><?= t('settings.control_summary') ?></p>
     <div class="mt-4 space-y-3">
       <div class="rounded-lg bg-white/10 p-3">
-        <p class="text-xs" style="color:#DCE8F0;">Active Approval Rules</p>
+        <p class="text-xs" style="color:#DCE8F0;"><?= t('settings.active_rules') ?></p>
         <p class="mt-1 text-2xl font-bold"><?= number_format(count(array_filter($approvalMatrix, static fn($row) => (int) $row['is_active'] === 1))) ?></p>
       </div>
       <div class="rounded-lg bg-white/10 p-3">
-        <p class="text-xs" style="color:#DCE8F0;">Configured Roles</p>
+        <p class="text-xs" style="color:#DCE8F0;"><?= t('settings.configured_roles') ?></p>
         <p class="mt-1 text-2xl font-bold"><?= number_format(count($roles)) ?></p>
       </div>
       <div class="rounded-lg bg-white/10 p-3">
-        <p class="text-xs" style="color:#DCE8F0;">Urgent Threshold</p>
-        <p class="mt-1 text-2xl font-bold"><?= h($settings['urgent_threshold'] !== '' ? $settings['urgent_threshold'] : 'Not set') ?></p>
+        <p class="text-xs" style="color:#DCE8F0;"><?= t('settings.urgent_threshold') ?></p>
+        <p class="mt-1 text-2xl font-bold"><?= h($settings['urgent_threshold'] !== '' ? $settings['urgent_threshold'] : t('settings.not_set')) ?></p>
       </div>
     </div>
   </div>
@@ -189,8 +189,8 @@ include ROOT_PATH . '/layouts/header.php';
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
   <div class="xl:col-span-2 rounded-xl border bg-white p-5">
     <div class="mb-4">
-      <h2 class="text-lg font-semibold text-gray-800">Approval Matrix</h2>
-      <p class="text-sm text-gray-500">Maintain the amount-based approval chain used when requests move past checking.</p>
+      <h2 class="text-lg font-semibold text-gray-800"><?= t('settings.approval_matrix') ?></h2>
+      <p class="text-sm text-gray-500"><?= t('settings.approval_matrix_desc') ?></p>
     </div>
 
     <form method="POST">
@@ -199,11 +199,11 @@ include ROOT_PATH . '/layouts/header.php';
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
-              <th class="px-3 py-3">Min Amount</th>
-              <th class="px-3 py-3">Max Amount</th>
-              <th class="px-3 py-3">Approver Role</th>
-              <th class="px-3 py-3">Sequence</th>
-              <th class="px-3 py-3">Active</th>
+              <th class="px-3 py-3"><?= t('settings.col.min_amount') ?></th>
+              <th class="px-3 py-3"><?= t('settings.col.max_amount') ?></th>
+              <th class="px-3 py-3"><?= t('settings.col.approver_role') ?></th>
+              <th class="px-3 py-3"><?= t('settings.col.sequence') ?></th>
+              <th class="px-3 py-3"><?= t('settings.col.active') ?></th>
             </tr>
           </thead>
           <tbody>
@@ -231,7 +231,7 @@ include ROOT_PATH . '/layouts/header.php';
               <td class="px-3 py-3">
                 <label class="inline-flex items-center gap-2 text-sm text-gray-600">
                   <input type="checkbox" name="is_active[<?= $idx ?>]" value="1" <?= (int) $row['is_active'] === 1 ? 'checked' : '' ?>>
-                  Enabled
+                  <?= t('settings.enabled') ?>
                 </label>
               </td>
             </tr>
@@ -261,7 +261,7 @@ include ROOT_PATH . '/layouts/header.php';
               <td class="px-3 py-3">
                 <label class="inline-flex items-center gap-2 text-sm text-gray-600">
                   <input type="checkbox" name="is_active[<?= $idx ?>]" value="1" checked>
-                  Enabled
+                  <?= t('settings.enabled') ?>
                 </label>
               </td>
             </tr>
@@ -271,14 +271,14 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
 
       <div class="mt-4 flex justify-end">
-        <button type="submit" class="theme-btn-secondary rounded-lg px-4 py-2 text-sm font-medium">Save Approval Matrix</button>
+        <button type="submit" class="theme-btn-secondary rounded-lg px-4 py-2 text-sm font-medium"><?= t('settings.save_matrix') ?></button>
       </div>
     </form>
   </div>
 
   <div class="space-y-5">
     <div class="rounded-xl border bg-white p-5">
-      <h2 class="text-lg font-semibold text-gray-800">Users by Role</h2>
+      <h2 class="text-lg font-semibold text-gray-800"><?= t('settings.users_by_role') ?></h2>
       <div class="mt-4 space-y-3">
         <?php foreach ($usersByRole as $row): ?>
         <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
@@ -290,7 +290,7 @@ include ROOT_PATH . '/layouts/header.php';
     </div>
 
     <div class="rounded-xl border bg-white p-5">
-      <h2 class="text-lg font-semibold text-gray-800">Recent Setting Updates</h2>
+      <h2 class="text-lg font-semibold text-gray-800"><?= t('settings.recent_updates') ?></h2>
       <div class="mt-4 space-y-3">
         <?php foreach ($recentAdmins as $row): ?>
         <div class="rounded-lg border border-gray-100 px-3 py-2">
@@ -300,7 +300,7 @@ include ROOT_PATH . '/layouts/header.php';
         </div>
         <?php endforeach; ?>
         <?php if (empty($recentAdmins)): ?>
-        <p class="text-sm text-gray-400">No settings have been updated yet.</p>
+        <p class="text-sm text-gray-400"><?= t('settings.no_updates') ?></p>
         <?php endif; ?>
       </div>
     </div>

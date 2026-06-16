@@ -67,27 +67,27 @@ include ROOT_PATH . '/layouts/header.php';
 
 <div class="mb-5 flex items-center justify-between">
   <div>
-    <h1 class="text-2xl font-bold text-gray-800">Payment Calendar</h1>
-    <p class="text-gray-500 text-sm">ตารางการจ่ายเงินรายเดือน</p>
+    <h1 class="text-2xl font-bold text-gray-800"><?= t('calendar.title') ?></h1>
+    <p class="text-gray-500 text-sm"><?= t('calendar.subtitle') ?></p>
   </div>
 </div>
 
 <!-- Summary -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
   <div class="bg-white border rounded-xl p-4 bg-blue-50 border-blue-200">
-    <p class="text-xs text-gray-500">Today's Payment</p>
+    <p class="text-xs text-gray-500"><?= t('calendar.today_payment') ?></p>
     <p class="text-xl font-bold text-blue-700">฿<?= fmtMoney($todayPay) ?></p>
   </div>
   <div class="bg-white border rounded-xl p-4 bg-purple-50 border-purple-200">
-    <p class="text-xs text-gray-500">This Month Total</p>
+    <p class="text-xs text-gray-500"><?= t('calendar.month_total') ?></p>
     <p class="text-xl font-bold text-purple-700">฿<?= fmtMoney($monthTotal) ?></p>
   </div>
   <div class="bg-white border rounded-xl p-4 bg-red-50 border-red-200">
-    <p class="text-xs text-gray-500">Overdue Items</p>
+    <p class="text-xs text-gray-500"><?= t('calendar.overdue_items') ?></p>
     <p class="text-xl font-bold text-red-700"><?= count($overdue) ?></p>
   </div>
   <div class="bg-white border rounded-xl p-4 bg-green-50 border-green-200">
-    <p class="text-xs text-gray-500">Days with Payment</p>
+    <p class="text-xs text-gray-500"><?= t('calendar.days_with_pay') ?></p>
     <p class="text-xl font-bold text-green-700"><?= count($payByDate) ?></p>
   </div>
 </div>
@@ -144,9 +144,9 @@ include ROOT_PATH . '/layouts/header.php';
 
     <!-- Weekly Forecast -->
     <div class="bg-white rounded-xl border p-4">
-      <h4 class="font-semibold text-gray-700 mb-3 text-sm">Next 4 Weeks Forecast</h4>
+      <h4 class="font-semibold text-gray-700 mb-3 text-sm"><?= t('calendar.forecast') ?></h4>
       <?php if (empty($weekly)): ?>
-      <p class="text-sm text-gray-400">No upcoming payments</p>
+      <p class="text-sm text-gray-400"><?= t('calendar.no_upcoming') ?></p>
       <?php else: ?>
       <div class="space-y-2">
         <?php foreach ($weekly as $w): ?>
@@ -165,7 +165,7 @@ include ROOT_PATH . '/layouts/header.php';
     <!-- Overdue -->
     <?php if (!empty($overdue)): ?>
     <div class="bg-white rounded-xl border p-4">
-      <h4 class="font-semibold text-red-600 mb-3 text-sm">⚠️ Overdue (<?= count($overdue) ?>)</h4>
+      <h4 class="font-semibold text-red-600 mb-3 text-sm"><?= t('calendar.overdue') ?> (<?= count($overdue) ?>)</h4>
       <div class="space-y-2 max-h-64 overflow-y-auto">
         <?php foreach ($overdue as $ov): ?>
         <div class="p-2 bg-red-50 border border-red-100 rounded-lg text-xs">
@@ -174,7 +174,7 @@ include ROOT_PATH . '/layouts/header.php';
             <span class="font-bold text-red-700">฿<?= fmtMoney($ov['net_payable']) ?></span>
           </div>
           <div class="text-gray-600 mt-0.5 truncate"><?= h($ov['vendor_name']) ?></div>
-          <div class="text-red-500 mt-0.5">Due: <?= fmtDate($ov['due_date']) ?> | <?= h($ov['status']) ?></div>
+          <div class="text-red-500 mt-0.5"><?= t('calendar.due') ?> <?= fmtDate($ov['due_date']) ?> | <?= h($ov['status']) ?></div>
         </div>
         <?php endforeach; ?>
       </div>

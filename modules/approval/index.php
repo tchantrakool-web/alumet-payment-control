@@ -8,6 +8,7 @@ if (!canAccess('approval')) {
 
 $pageTitle = 'Approval Queue';
 $db = getDB();
+$user = currentUser();
 
 $pendingStatuses = [];
 if (hasRole('admin', 'checker', 'finance_manager')) {
@@ -110,8 +111,8 @@ include ROOT_PATH . '/layouts/header.php';
 ?>
 
 <div class="mb-5">
-  <h1 class="text-2xl font-bold text-gray-800">Approval Queue</h1>
-  <p class="text-sm text-gray-500">Finance review and management approval queue for payment requests.</p>
+  <h1 class="text-2xl font-bold text-gray-800"><?= t('approval.title') ?></h1>
+  <p class="text-sm text-gray-500"><?= t('approval.subtitle') ?></p>
 </div>
 
 <div class="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -130,10 +131,10 @@ include ROOT_PATH . '/layouts/header.php';
 
 <div class="mb-4 flex gap-2">
   <a href="?tab=pending" class="rounded-lg px-4 py-2 text-sm font-medium <?= $filterTab === 'pending' ? 'bg-blue-600 text-white' : 'border bg-white text-gray-600 hover:bg-gray-50' ?>">
-    Pending (<?= number_format((int)(($statMap['Pending Finance Review'] ?? 0) + ($statMap['Pending Management Approval'] ?? 0))) ?>)
+    <?= t('approval.pending') ?> (<?= number_format((int)(($statMap['Pending Finance Review'] ?? 0) + ($statMap['Pending Management Approval'] ?? 0))) ?>)
   </a>
   <a href="?tab=history" class="rounded-lg px-4 py-2 text-sm font-medium <?= $filterTab === 'history' ? 'bg-blue-600 text-white' : 'border bg-white text-gray-600 hover:bg-gray-50' ?>">
-    History
+    <?= t('approval.history') ?>
   </a>
 </div>
 
@@ -142,14 +143,14 @@ include ROOT_PATH . '/layouts/header.php';
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
-          <th class="px-4 py-3">Request No.</th>
-          <th class="px-4 py-3">Vendor</th>
-          <th class="px-4 py-3 text-right">Amount</th>
-          <th class="px-4 py-3">Due Date</th>
-          <th class="px-4 py-3">Priority</th>
-          <th class="px-4 py-3">Status</th>
-          <th class="px-4 py-3">Submitted By</th>
-          <th class="px-4 py-3">Action</th>
+          <th class="px-4 py-3"><?= t('label.request_no') ?></th>
+          <th class="px-4 py-3"><?= t('label.vendor') ?></th>
+          <th class="px-4 py-3 text-right"><?= t('label.amount') ?></th>
+          <th class="px-4 py-3"><?= t('label.due_date') ?></th>
+          <th class="px-4 py-3"><?= t('label.priority') ?></th>
+          <th class="px-4 py-3"><?= t('label.status') ?></th>
+          <th class="px-4 py-3"><?= t('approval.col.submitted_by') ?></th>
+          <th class="px-4 py-3"><?= t('approval.col.action') ?></th>
         </tr>
       </thead>
       <tbody>
@@ -179,7 +180,7 @@ include ROOT_PATH . '/layouts/header.php';
           <td class="px-4 py-3 text-xs text-gray-500"><?= h($request['creator_name'] ?? '') ?></td>
           <td class="px-4 py-3">
             <a href="<?= BASE_URL ?>/modules/payment_requests/detail.php?id=<?= (int)$request['id'] ?>" class="inline-block rounded-lg bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700">
-              Review
+              <?= t('btn.review') ?>
             </a>
           </td>
         </tr>
@@ -187,7 +188,7 @@ include ROOT_PATH . '/layouts/header.php';
         <?php if (empty($requests)): ?>
         <tr>
           <td colspan="8" class="px-4 py-8 text-center text-gray-400">
-            <?= $filterTab === 'pending' ? 'No approval items are waiting in your queue.' : 'No approval history found.' ?>
+            <?= $filterTab === 'pending' ? t('approval.empty.pending') : t('approval.empty.history') ?>
           </td>
         </tr>
         <?php endif; ?>

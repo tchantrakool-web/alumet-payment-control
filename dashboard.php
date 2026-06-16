@@ -105,28 +105,28 @@ $archiveLabels = [
 
 $widgets = [
     [
-        'label' => 'Open AP Amount',
+        'label' => t('widget.open_ap'),
         'value' => fmtMoney((float)($openAp['total_amount'] ?? 0)),
-        'sub' => 'Outstanding SAP AP invoices',
+        'sub' => t('widget.open_ap.sub'),
         'classes' => 'bg-emerald-50 border-emerald-200',
         'valueClass' => 'text-emerald-800',
     ],
     [
-        'label' => 'Due This Week',
+        'label' => t('widget.due_this_week'),
         'value' => fmtMoney((float)($dueThisWeek['total_amount'] ?? 0)),
-        'sub' => 'Active queue due within 7 days',
+        'sub' => t('widget.due_this_week.sub'),
         'classes' => 'bg-amber-50 border-amber-200',
         'valueClass' => 'text-amber-700',
     ],
     [
-        'label' => 'Pending Approval',
+        'label' => t('widget.pending_approval'),
         'value' => number_format((int)($pendingApproval['request_count'] ?? 0)),
-        'sub' => 'Requests waiting management approval',
+        'sub' => t('widget.pending_approval.sub'),
         'classes' => 'bg-sky-50 border-sky-200',
         'valueClass' => 'text-sky-800',
     ],
     [
-        'label' => 'Approved for Payment',
+        'label' => t('widget.approved_for_payment'),
         'value' => fmtMoney((float)($approvedForPayment['total_amount'] ?? 0)),
         'sub' => number_format((int)($approvedForPayment['request_count'] ?? 0)) . ' request(s) ready to pay',
         'classes' => 'bg-teal-50 border-teal-200',
@@ -139,15 +139,15 @@ include ROOT_PATH . '/layouts/header.php';
 
 <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
   <div>
-    <h1 class="text-3xl font-bold text-gray-800">Executive Dashboard</h1>
-    <p class="mt-1 text-base text-gray-500">Active queue only. Paid items leave the dashboard immediately and remain available in payment history.</p>
+    <h1 class="text-3xl font-bold text-gray-800"><?= t('dashboard.title') ?></h1>
+    <p class="mt-1 text-base text-gray-500"><?= t('dashboard.subtitle') ?></p>
   </div>
   <div class="flex flex-wrap gap-3">
     <a href="<?= BASE_URL ?>/modules/payment_requests/?status=Paid" class="rounded-xl bg-[#003B5C] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0a4f78]">
-      View Paid History
+      <?= t('dashboard.view_paid') ?>
     </a>
     <a href="<?= BASE_URL ?>/modules/payment_requests/" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-      Open Active Queue
+      <?= t('dashboard.open_queue') ?>
     </a>
   </div>
 </div>
@@ -167,15 +167,15 @@ include ROOT_PATH . '/layouts/header.php';
 <div class="rounded-2xl border bg-white p-5 shadow-sm mb-6">
   <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
     <div>
-      <h2 class="text-lg font-bold text-gray-800">Overdue Aging Analysis</h2>
-      <p class="mt-0.5 text-sm text-gray-500">Unpaid requests past due date — broken down by aging bucket</p>
+      <h2 class="text-lg font-bold text-gray-800"><?= t('dashboard.overdue.title') ?></h2>
+      <p class="mt-0.5 text-sm text-gray-500"><?= t('dashboard.overdue.subtitle') ?></p>
     </div>
     <div class="text-right">
-      <p class="text-xs text-gray-400">As of <?= date('d/m/Y') ?></p>
+      <p class="text-xs text-gray-400"><?= t('dashboard.overdue.as_of') ?> <?= date('d/m/Y') ?></p>
       <?php if ($totalOverdueCnt > 0): ?>
-      <p class="mt-0.5 text-sm font-semibold text-red-600"><?= $totalOverdueCnt ?> request(s) overdue · THB <?= fmtMoney($totalOverdueAmt) ?></p>
+      <p class="mt-0.5 text-sm font-semibold text-red-600"><?= $totalOverdueCnt ?> <?= t('dashboard.overdue.requests') ?> · THB <?= fmtMoney($totalOverdueAmt) ?></p>
       <?php else: ?>
-      <p class="mt-0.5 text-sm font-semibold text-emerald-600">No overdue items</p>
+      <p class="mt-0.5 text-sm font-semibold text-emerald-600"><?= t('dashboard.overdue.no_items') ?></p>
       <?php endif; ?>
     </div>
   </div>
@@ -213,13 +213,13 @@ include ROOT_PATH . '/layouts/header.php';
   <!-- Chart -->
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-4">
     <div class="lg:col-span-3">
-      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Amount (THB) by Aging Bucket</p>
+      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400"><?= t('dashboard.amount_by_bucket') ?></p>
       <div class="relative h-[160px]">
         <canvas id="overdueAmtChart"></canvas>
       </div>
     </div>
     <div class="flex flex-col items-center">
-      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 self-start">Number of Requests</p>
+      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 self-start"><?= t('dashboard.num_requests') ?></p>
       <div class="w-full max-w-[200px]">
         <canvas id="overdueCountChart"></canvas>
       </div>
@@ -228,7 +228,7 @@ include ROOT_PATH . '/layouts/header.php';
 
   <?php if (!empty($overdueStatusRows)): ?>
   <div class="mt-5 border-t pt-4">
-    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Overdue by Status</p>
+    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400"><?= t('dashboard.overdue_by_status') ?></p>
     <div class="space-y-2">
       <?php foreach ($overdueStatusRows as $sr): ?>
       <?php
@@ -252,8 +252,8 @@ include ROOT_PATH . '/layouts/header.php';
   <div class="rounded-2xl border bg-white p-5 shadow-sm">
     <div class="flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-bold text-gray-800">Active Queue</h2>
-        <p class="mt-1 text-sm text-gray-500">Only active workflow items should stay on the dashboard.</p>
+        <h2 class="text-lg font-bold text-gray-800"><?= t('dashboard.active_queue') ?></h2>
+        <p class="mt-1 text-sm text-gray-500"><?= t('dashboard.active_queue.desc') ?></p>
       </div>
       <a href="<?= BASE_URL ?>/modules/payment_requests/" class="text-sm font-semibold hover:underline" style="color:#003B5C;">View payment requests</a>
     </div>
@@ -267,10 +267,10 @@ include ROOT_PATH . '/layouts/header.php';
   <div class="rounded-2xl border bg-white p-5 shadow-sm">
     <div class="flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-bold text-gray-800">Payment History / Archive</h2>
-        <p class="mt-1 text-sm text-gray-500">Paid, cancelled, and rejected items are retained for reference and audit, not deleted.</p>
+        <h2 class="text-lg font-bold text-gray-800"><?= t('dashboard.history') ?></h2>
+        <p class="mt-1 text-sm text-gray-500"><?= t('dashboard.history.desc') ?></p>
       </div>
-      <a href="<?= BASE_URL ?>/modules/payment_requests/?status=Paid" class="text-sm font-semibold hover:underline" style="color:#003B5C;">Open paid history</a>
+      <a href="<?= BASE_URL ?>/modules/payment_requests/?status=Paid" class="text-sm font-semibold hover:underline" style="color:#003B5C;"><?= t('dashboard.history.view') ?></a>
     </div>
     <div class="mt-4 flex flex-wrap gap-2">
       <?php foreach ($archiveLabels as $label): ?>

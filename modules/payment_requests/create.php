@@ -218,9 +218,9 @@ include ROOT_PATH . '/layouts/header.php';
 ?>
 
 <div class="mb-5">
-  <a href="<?= BASE_URL ?>/modules/payment_requests/" class="text-sm text-gray-500 hover:text-gray-700">&larr; Payment Requests</a>
-  <h1 class="mt-1 text-2xl font-bold text-gray-800">Create Payment Request</h1>
-  <p class="mt-1 text-sm text-gray-500">Accounting can group one vendor per request, capture WHT, and start the document-check workflow.</p>
+  <a href="<?= BASE_URL ?>/modules/payment_requests/" class="text-sm text-gray-500 hover:text-gray-700"><?= t('pr.detail.back') ?></a>
+  <h1 class="mt-1 text-2xl font-bold text-gray-800"><?= t('pr.create.title') ?></h1>
+  <p class="mt-1 text-sm text-gray-500"><?= t('pr.create.subtitle') ?></p>
 </div>
 
 <form method="POST" x-data='prForm(<?= json_encode($vendorMap, JSON_UNESCAPED_UNICODE) ?>, <?= json_encode($preInvoice ? [[
@@ -233,13 +233,13 @@ include ROOT_PATH . '/layouts/header.php';
     <div class="rounded-xl border bg-white p-5">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 class="font-semibold text-gray-700">Unpaid AP Invoices by Vendor</h3>
-          <p class="mt-1 text-xs text-gray-500"><?= count($invoices) ?> unpaid AP invoice(s) across <?= count($invoicesByVendor) ?> vendor(s)</p>
+          <h3 class="font-semibold text-gray-700"><?= t('pr.create.vendor_section') ?></h3>
+          <p class="mt-1 text-xs text-gray-500"><?= count($invoices) ?> <?= t('pr.create.invoices_across') ?> <?= count($invoicesByVendor) ?> <?= t('pr.create.vendors') ?></p>
         </div>
       </div>
 
       <div class="mb-4">
-        <input type="text" x-model="vendorFilter" placeholder="Filter by vendor..."
+        <input type="text" x-model="vendorFilter" placeholder="<?= t('pr.create.filter_vendor') ?>"
                class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
       </div>
 
@@ -257,12 +257,12 @@ include ROOT_PATH . '/layouts/header.php';
               <span class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-xs font-bold text-gray-500" x-text="isVendorOpen('<?= $groupKey ?>') ? '-' : '+'"></span>
               <span class="min-w-0">
                 <span class="block truncate font-semibold text-gray-800"><?= h($group['vendor_name'] ?: '(No vendor name)') ?></span>
-                <span class="block text-xs text-gray-500"><?= h($group['vendor_code'] ?: '-') ?> · <?= (int)$group['invoice_count'] ?> invoice(s)</span>
+                <span class="block text-xs text-gray-500"><?= h($group['vendor_code'] ?: '-') ?> · <?= (int)$group['invoice_count'] ?> <?= t('pr.create.invoices') ?></span>
               </span>
             </button>
             <div class="flex items-center gap-3">
               <div class="text-right">
-                <div class="text-xs text-gray-500">Outstanding</div>
+                <div class="text-xs text-gray-500"><?= t('pr.create.outstanding') ?></div>
                 <div class="font-semibold text-orange-600"><?= fmtMoney($group['total_balance']) ?></div>
               </div>
               <button type="button"
@@ -273,7 +273,7 @@ include ROOT_PATH . '/layouts/header.php';
                           'vendor' => $item['vendor_name'],
                           'code' => $item['vendor_code'] ?? '',
                       ], $group['items'])), ENT_QUOTES, 'UTF-8') ?>)'>
-                Select Vendor
+                <?= t('pr.create.select_vendor') ?>
               </button>
             </div>
           </div>
@@ -283,11 +283,11 @@ include ROOT_PATH . '/layouts/header.php';
               <thead>
                 <tr class="border-b bg-gray-50 text-left text-xs text-gray-500">
                   <th class="w-8 px-3 py-2"></th>
-                  <th class="px-3 py-2">Invoice No.</th>
-                  <th class="px-3 py-2">Invoice Date</th>
-                  <th class="px-3 py-2">PO / GRPO</th>
-                  <th class="px-3 py-2">Status</th>
-                  <th class="px-3 py-2 text-right">Outstanding</th>
+                  <th class="px-3 py-2"><?= t('label.invoice_no') ?></th>
+                  <th class="px-3 py-2"><?= t('ap.col.invoice_date') ?></th>
+                  <th class="px-3 py-2"><?= t('pr.create.po_grpo') ?></th>
+                  <th class="px-3 py-2"><?= t('label.status') ?></th>
+                  <th class="px-3 py-2 text-right"><?= t('pr.create.outstanding') ?></th>
                 </tr>
               </thead>
               <tbody>
@@ -318,7 +318,7 @@ include ROOT_PATH . '/layouts/header.php';
 
         <?php if (empty($invoices)): ?>
         <div class="rounded-xl border bg-white px-4 py-8 text-center text-gray-400">
-          No unpaid AP invoices are available for creating a payment request.
+          <?= t('pr.create.no_invoices') ?>
         </div>
         <?php endif; ?>
       </div>
@@ -327,30 +327,30 @@ include ROOT_PATH . '/layouts/header.php';
 
   <div class="space-y-4">
     <div class="rounded-xl border bg-white p-5">
-      <h3 class="mb-4 font-semibold text-gray-700">Request Details</h3>
+      <h3 class="mb-4 font-semibold text-gray-700"><?= t('pr.create.request_details') ?></h3>
 
       <div class="mb-3">
-        <label class="mb-1 block text-xs text-gray-500">Vendor <span class="text-red-500">*</span></label>
+        <label class="mb-1 block text-xs text-gray-500"><?= t('label.vendor') ?> <span class="text-red-500">*</span></label>
         <input type="text" name="vendor_name" x-model="vendorName" readonly
-               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="Select unpaid invoices first">
+               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="<?= t('pr.create.select_first') ?>">
         <input type="hidden" name="vendor_code" x-model="vendorCode">
         <input type="hidden" name="vendor_id" x-model="vendorId">
       </div>
 
       <div class="mb-3">
-        <label class="mb-1 block text-xs text-gray-500">Vendor Code</label>
+        <label class="mb-1 block text-xs text-gray-500"><?= t('label.vendor_code') ?></label>
         <input type="text" x-model="vendorCode" readonly
-               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="Vendor code will appear here">
+               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="<?= t('pr.create.vendor_code_ph') ?>">
       </div>
 
       <div class="mb-3">
-        <label class="mb-1 block text-xs text-gray-500">Due Date <span class="text-red-500">*</span></label>
+        <label class="mb-1 block text-xs text-gray-500"><?= t('label.due_date') ?> <span class="text-red-500">*</span></label>
         <input type="date" name="due_date" required value="<?= date('Y-m-d', strtotime('+7 days')) ?>"
                class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
       </div>
 
       <div class="mb-3">
-        <label class="mb-1 block text-xs text-gray-500">Payment Method</label>
+        <label class="mb-1 block text-xs text-gray-500"><?= t('label.payment_method') ?></label>
         <select name="payment_method" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           <option value="cheque">Cheque</option>
           <option value="transfer">Bank Transfer</option>
@@ -361,21 +361,21 @@ include ROOT_PATH . '/layouts/header.php';
       <div class="mb-3 rounded-lg border border-gray-200 p-3">
         <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
           <input type="checkbox" name="wht_applicable" x-model="whtApplicable">
-          Apply withholding tax (WHT)
+          <?= t('pr.create.wht_applicable') ?>
         </label>
         <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <label class="mb-1 block text-xs text-gray-500">WHT Rate (%)</label>
+            <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_rate') ?></label>
             <input type="number" step="0.01" min="0" name="wht_rate" x-model.number="whtRate"
                    class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Example: 3.00">
           </div>
           <div>
-            <label class="mb-1 block text-xs text-gray-500">WHT Amount</label>
+            <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_amount') ?></label>
             <input type="number" step="0.01" min="0" name="wht_amount" x-model.number="whtAmount"
                    class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Auto or manual">
           </div>
           <div class="md:col-span-2">
-            <label class="mb-1 block text-xs text-gray-500">WHT Base Amount</label>
+            <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_base') ?></label>
             <input type="number" step="0.01" min="0" name="wht_base_amount" x-model.number="whtBaseAmount"
                    class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           </div>
@@ -385,13 +385,13 @@ include ROOT_PATH . '/layouts/header.php';
       <div class="mb-3 rounded-lg border border-gray-200 p-3">
         <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
           <input type="checkbox" name="tax_invoice_required" value="1" checked>
-          Tax invoice required for this request
+          <?= t('pr.create.tax_required') ?>
         </label>
-        <p class="mt-2 text-xs text-gray-500">If checked, the request cannot move past accounting review until a tax invoice is confirmed.</p>
+        <p class="mt-2 text-xs text-gray-500"><?= t('pr.create.tax_note') ?></p>
       </div>
 
       <div class="mb-3">
-        <label class="mb-1 block text-xs text-gray-500">Priority</label>
+        <label class="mb-1 block text-xs text-gray-500"><?= t('label.priority') ?></label>
         <select name="priority" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           <option value="normal">Normal</option>
           <option value="urgent">Urgent</option>
@@ -400,45 +400,45 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
 
       <div class="mb-4">
-        <label class="mb-1 block text-xs text-gray-500">Note</label>
+        <label class="mb-1 block text-xs text-gray-500"><?= t('label.note') ?></label>
         <textarea name="note" rows="3" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="Additional note..."></textarea>
+                  placeholder="<?= t('pr.create.note_ph') ?>"></textarea>
       </div>
 
       <div class="mb-4 rounded-lg p-3" style="background:#ECF1F7;">
         <div class="mb-1 flex justify-between text-sm">
-          <span class="text-gray-600">Selected Items:</span>
+          <span class="text-gray-600"><?= t('pr.create.selected_items') ?></span>
           <span class="font-semibold" x-text="selected.length"></span>
         </div>
         <div class="mb-1 flex justify-between text-sm">
-          <span class="text-gray-600">Selected Vendor:</span>
+          <span class="text-gray-600"><?= t('pr.create.selected_vendor') ?></span>
           <span class="text-right font-medium" x-text="vendorName || '-'"></span>
         </div>
         <div class="mb-1 flex justify-between text-sm">
-          <span class="text-gray-600">Vendor Code:</span>
+          <span class="text-gray-600"><?= t('label.vendor_code') ?>:</span>
           <span class="text-right font-medium" x-text="vendorCode || '-'"></span>
         </div>
         <div class="flex justify-between text-sm">
-          <span class="text-gray-600">Gross Amount:</span>
+          <span class="text-gray-600"><?= t('pr.create.gross_amount') ?></span>
           <span class="font-bold" style="color:#003B5C;" x-text="'THB ' + totalAmount.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})"></span>
         </div>
         <div class="mt-1 flex justify-between text-sm">
-          <span class="text-gray-600">WHT Amount:</span>
+          <span class="text-gray-600"><?= t('pr.create.wht_amount') ?></span>
           <span class="font-semibold text-amber-700" x-text="'THB ' + computedWht.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})"></span>
         </div>
         <div class="mt-1 flex justify-between text-sm">
-          <span class="text-gray-600">Net Payable:</span>
+          <span class="text-gray-600"><?= t('pr.create.net_payable') ?></span>
           <span class="font-bold text-emerald-700" x-text="'THB ' + computedNet.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})"></span>
         </div>
       </div>
 
       <div class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        One payment request should contain AP invoices from one vendor only. New requests start in Pending Documents until supporting files are confirmed.
+        <?= t('pr.create.warning') ?>
       </div>
 
       <button type="submit" :disabled="selected.length === 0 || !vendorName"
               class="theme-btn-primary w-full rounded-lg py-2.5 text-sm font-medium text-white transition-colors disabled:bg-gray-300">
-        Create Request
+        <?= t('pr.create.submit') ?>
       </button>
     </div>
   </div>

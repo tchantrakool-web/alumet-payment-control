@@ -106,6 +106,15 @@ function h(string $str): string {
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }
 
+function t(string $key, string $default = ''): string {
+    static $translations = null;
+    if ($translations === null) {
+        $translations = require __DIR__ . '/lang.php';
+    }
+    $lang = defined('APP_LANG') ? APP_LANG : 'en';
+    return $translations[$lang][$key] ?? $translations['en'][$key] ?? ($default ?: $key);
+}
+
 function getSetting(string $key, string $default = ''): string {
     try {
         $db   = getDB();

@@ -552,7 +552,7 @@ include ROOT_PATH . '/layouts/header.php';
 ?>
 
 <div class="mb-5 flex items-center gap-3">
-  <a href="<?= BASE_URL ?>/modules/payment_requests/" class="text-sm text-gray-500 hover:text-gray-700">&larr; Payment Requests</a>
+  <a href="<?= BASE_URL ?>/modules/payment_requests/" class="text-sm text-gray-500 hover:text-gray-700"><?= t('pr.detail.back') ?></a>
 </div>
 
 <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -564,58 +564,58 @@ include ROOT_PATH . '/layouts/header.php';
             <h2 class="text-lg font-bold text-gray-800"><?= h($request['request_no']) ?></h2>
             <?= statusBadge($request['status']) ?>
             <?php if ($isOverdue): ?>
-            <span class="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">Overdue</span>
+            <span class="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700"><?= t('pr.overdue') ?></span>
             <?php endif; ?>
             <?php if ($request['priority'] === 'urgent'): ?>
-            <span class="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700">Urgent</span>
+            <span class="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700"><?= t('pr.detail.urgent') ?></span>
             <?php endif; ?>
           </div>
           <p class="mt-0.5 text-sm text-gray-600"><?= h($request['vendor_name']) ?> <?= $request['vendor_code'] ? '(' . h($request['vendor_code']) . ')' : '' ?></p>
         </div>
         <div class="text-right">
           <p class="text-2xl font-bold" style="color:#003B5C;">THB <?= fmtMoney((float)$request['net_payable']) ?></p>
-          <p class="text-xs text-gray-400">Net Payable</p>
+          <p class="text-xs text-gray-400"><?= t('label.net_payable') ?></p>
         </div>
       </div>
 
       <div class="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
-        <div><p class="text-xs text-gray-500">Gross Amount</p><p class="font-medium">THB <?= fmtMoney((float)($request['gross_amount'] ?? $request['total_amount'])) ?></p></div>
-        <div><p class="text-xs text-gray-500">WHT</p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_amount']) ?></p></div>
-        <div><p class="text-xs text-gray-500">Outstanding Balance</p><p class="font-medium <?= $outstandingBalance > 0 ? 'text-orange-600' : 'text-gray-400' ?>">THB <?= fmtMoney($outstandingBalance) ?></p></div>
-        <div><p class="text-xs text-gray-500">Invoice Ref.</p><p class="font-medium text-xs"><?= h(!empty($invoiceRefs) ? implode(', ', $invoiceRefs) : '-') ?></p></div>
-        <div><p class="text-xs text-gray-500">Due Date</p><p class="font-medium <?= $isOverdue ? 'text-red-600' : '' ?>"><?= fmtDate($request['due_date']) ?></p></div>
-        <div><p class="text-xs text-gray-500">Payment Method</p><p class="font-medium capitalize"><?= h($request['payment_method']) ?></p></div>
-        <div><p class="text-xs text-gray-500">Created By</p><p class="font-medium"><?= h($request['creator_name'] ?? '') ?></p></div>
-        <div><p class="text-xs text-gray-500">Created At</p><p class="font-medium"><?= fmtDateTime($request['created_at']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('label.gross_amount') ?></p><p class="font-medium">THB <?= fmtMoney((float)($request['gross_amount'] ?? $request['total_amount'])) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('label.wht') ?></p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_amount']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('label.outstanding') ?></p><p class="font-medium <?= $outstandingBalance > 0 ? 'text-orange-600' : 'text-gray-400' ?>">THB <?= fmtMoney($outstandingBalance) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('pr.col.invoice_ref') ?></p><p class="font-medium text-xs"><?= h(!empty($invoiceRefs) ? implode(', ', $invoiceRefs) : '-') ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('label.due_date') ?></p><p class="font-medium <?= $isOverdue ? 'text-red-600' : '' ?>"><?= fmtDate($request['due_date']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('label.payment_method') ?></p><p class="font-medium capitalize"><?= h($request['payment_method']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('label.created_by') ?></p><p class="font-medium"><?= h($request['creator_name'] ?? '') ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('pr.detail.created_at') ?></p><p class="font-medium"><?= fmtDateTime($request['created_at']) ?></p></div>
         <?php if ($request['checked_by']): ?>
-        <div><p class="text-xs text-gray-500">Finance Review By</p><p class="font-medium"><?= h($request['checker_name']) ?></p></div>
-        <div><p class="text-xs text-gray-500">Finance Review At</p><p class="font-medium"><?= fmtDateTime($request['checked_at']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('pr.detail.finance_review_by') ?></p><p class="font-medium"><?= h($request['checker_name']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('pr.detail.finance_review_at') ?></p><p class="font-medium"><?= fmtDateTime($request['checked_at']) ?></p></div>
         <?php endif; ?>
         <?php if ($request['payment_reference']): ?>
-        <div><p class="text-xs text-gray-500">Payment Ref.</p><p class="font-medium"><?= h($request['payment_reference']) ?></p></div>
-        <div><p class="text-xs text-gray-500">Payment Date</p><p class="font-medium"><?= fmtDate($request['payment_date']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('pr.detail.payment_ref') ?></p><p class="font-medium"><?= h($request['payment_reference']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('pr.detail.payment_date') ?></p><p class="font-medium"><?= fmtDate($request['payment_date']) ?></p></div>
         <?php endif; ?>
       </div>
 
       <?php if ($request['note']): ?>
       <div class="mt-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-        <span class="font-medium">Note: </span><?= h($request['note']) ?>
+        <span class="font-medium"><?= t('pr.detail.note_prefix') ?> </span><?= h($request['note']) ?>
       </div>
       <?php endif; ?>
       <?php if ($request['return_reason']): ?>
       <div class="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-        <span class="font-medium">Returned to <?= h((string)$request['return_to']) ?>:</span> <?= h((string)$request['return_reason']) ?>
+        <span class="font-medium"><?= t('pr.detail.returned_to') ?> <?= h((string)$request['return_to']) ?>:</span> <?= h((string)$request['return_reason']) ?>
       </div>
       <?php endif; ?>
     </div>
 
     <div class="rounded-xl border bg-white p-5">
       <div class="mb-3 flex items-center justify-between">
-        <h3 class="font-semibold text-gray-700">Accounting Review Checklist</h3>
+        <h3 class="font-semibold text-gray-700"><?= t('pr.detail.checklist') ?></h3>
         <?php if (!empty($checklistErrors)): ?>
-        <span class="rounded bg-amber-100 px-2 py-1 text-xs text-amber-700"><?= count($checklistErrors) ?> item(s) pending</span>
+        <span class="rounded bg-amber-100 px-2 py-1 text-xs text-amber-700"><?= count($checklistErrors) ?> <?= t('pr.detail.items_pending') ?></span>
         <?php else: ?>
-        <span class="rounded bg-emerald-100 px-2 py-1 text-xs text-emerald-700">Ready</span>
+        <span class="rounded bg-emerald-100 px-2 py-1 text-xs text-emerald-700"><?= t('pr.detail.ready') ?></span>
         <?php endif; ?>
       </div>
 
@@ -624,55 +624,55 @@ include ROOT_PATH . '/layouts/header.php';
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
           <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
             <input type="checkbox" name="has_po" value="1" <?= $checklist['po'] ? 'checked' : '' ?>>
-            PO confirmed
+            <?= t('pr.detail.po_confirmed') ?>
           </label>
           <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
             <input type="checkbox" name="has_grn" value="1" <?= $checklist['grn'] ? 'checked' : '' ?>>
-            GRN / GRPO confirmed
+            <?= t('pr.detail.grn_confirmed') ?>
           </label>
           <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
             <input type="checkbox" name="has_invoice" value="1" <?= $checklist['invoice'] ? 'checked' : '' ?>>
-            Vendor invoice confirmed
+            <?= t('pr.detail.invoice_confirmed') ?>
           </label>
           <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
             <input type="checkbox" name="has_tax_invoice" value="1" <?= $checklist['tax_invoice'] ? 'checked' : '' ?>>
-            Tax invoice confirmed
+            <?= t('pr.detail.tax_confirmed') ?>
           </label>
         </div>
 
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <label class="mb-1 block text-xs text-gray-500">Gross Amount</label>
+            <label class="mb-1 block text-xs text-gray-500"><?= t('label.gross_amount') ?></label>
             <input type="number" step="0.01" min="0" name="gross_amount" value="<?= h((string)($request['gross_amount'] ?? $request['total_amount'])) ?>"
                    class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           </div>
           <div class="rounded-lg border p-3">
             <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
               <input type="checkbox" name="wht_applicable" value="1" <?= (int)$request['wht_applicable'] === 1 ? 'checked' : '' ?>>
-              WHT applicable
+              <?= t('pr.detail.wht_applicable') ?>
             </label>
             <label class="mt-2 flex items-center gap-2 text-sm text-gray-700">
               <input type="checkbox" name="tax_invoice_required" value="1" <?= (int)$request['tax_invoice_required'] === 1 ? 'checked' : '' ?>>
-              Tax invoice required
+              <?= t('pr.detail.tax_req_checkbox') ?>
             </label>
           </div>
           <div>
-            <label class="mb-1 block text-xs text-gray-500">WHT Rate (%)</label>
+            <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_rate') ?></label>
             <input type="number" step="0.01" min="0" name="wht_rate" value="<?= h((string)$request['wht_rate']) ?>"
                    class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           </div>
           <div>
-            <label class="mb-1 block text-xs text-gray-500">WHT Base Amount</label>
+            <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_base') ?></label>
             <input type="number" step="0.01" min="0" name="wht_base_amount" value="<?= h((string)$request['wht_base_amount']) ?>"
                    class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           </div>
           <div>
-            <label class="mb-1 block text-xs text-gray-500">WHT Amount</label>
+            <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_amount') ?></label>
             <input type="number" step="0.01" min="0" name="wht_amount" value="<?= h((string)$request['wht_amount']) ?>"
                    class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           </div>
           <div>
-            <label class="mb-1 block text-xs text-gray-500">Net Payable</label>
+            <label class="mb-1 block text-xs text-gray-500"><?= t('label.net_payable') ?></label>
             <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-emerald-700">
               THB <?= fmtMoney((float)$request['net_payable']) ?>
             </div>
@@ -680,7 +680,7 @@ include ROOT_PATH . '/layouts/header.php';
         </div>
 
         <div>
-          <label class="mb-1 block text-xs text-gray-500">Accounting Note</label>
+          <label class="mb-1 block text-xs text-gray-500"><?= t('pr.detail.note_label') ?></label>
           <textarea name="note" rows="3" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"><?= h((string)$request['note']) ?></textarea>
         </div>
 
@@ -690,22 +690,22 @@ include ROOT_PATH . '/layouts/header.php';
         </div>
         <?php endif; ?>
 
-        <button class="theme-btn-secondary rounded-lg px-4 py-2 text-sm font-medium">Save Review Details</button>
+        <button class="theme-btn-secondary rounded-lg px-4 py-2 text-sm font-medium"><?= t('pr.detail.save_review') ?></button>
       </form>
     </div>
 
     <div class="rounded-xl border bg-white p-5">
-      <h3 class="mb-3 font-semibold text-gray-700">AP Invoice Items (<?= count($items) ?>)</h3>
+      <h3 class="mb-3 font-semibold text-gray-700"><?= t('pr.detail.items') ?> (<?= count($items) ?>)</h3>
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b bg-gray-50 text-left text-xs text-gray-500">
-            <th class="px-3 py-2">Invoice No.</th>
-            <th class="px-3 py-2">Reference</th>
-            <th class="px-3 py-2">PO / GRPO</th>
-            <th class="px-3 py-2">Invoice Date</th>
-            <th class="px-3 py-2 text-right">Amount</th>
-            <th class="px-3 py-2 text-right">WHT</th>
-            <th class="px-3 py-2 text-right">Net</th>
+            <th class="px-3 py-2"><?= t('label.invoice_no') ?></th>
+            <th class="px-3 py-2"><?= t('pr.detail.col.reference') ?></th>
+            <th class="px-3 py-2"><?= t('pr.create.po_grpo') ?></th>
+            <th class="px-3 py-2"><?= t('ap.col.invoice_date') ?></th>
+            <th class="px-3 py-2 text-right"><?= t('label.amount') ?></th>
+            <th class="px-3 py-2 text-right"><?= t('label.wht') ?></th>
+            <th class="px-3 py-2 text-right"><?= t('pr.detail.col.net') ?></th>
           </tr>
         </thead>
         <tbody>
@@ -728,7 +728,7 @@ include ROOT_PATH . '/layouts/header.php';
 
     <div class="rounded-xl border bg-white p-5">
       <div class="mb-3 flex items-center justify-between">
-        <h3 class="font-semibold text-gray-700">Documents (<?= count($attachments) ?>)</h3>
+        <h3 class="font-semibold text-gray-700"><?= t('pr.detail.documents') ?> (<?= count($attachments) ?>)</h3>
         <form method="POST" action="<?= BASE_URL ?>/api/attachments.php" enctype="multipart/form-data" class="flex items-center gap-2">
           <input type="hidden" name="related_type" value="payment_request">
           <input type="hidden" name="related_id" value="<?= $id ?>">
@@ -741,23 +741,23 @@ include ROOT_PATH . '/layouts/header.php';
             <option value="Payment Proof">Payment Proof</option>
             <option value="Other">Other</option>
           </select>
-          <button type="submit" class="theme-btn-primary rounded px-3 py-1 text-xs">Upload</button>
+          <button type="submit" class="theme-btn-primary rounded px-3 py-1 text-xs"><?= t('btn.upload') ?></button>
         </form>
       </div>
       <?php if (empty($attachments)): ?>
-      <p class="py-3 text-center text-sm text-gray-400">No attachment yet</p>
+      <p class="py-3 text-center text-sm text-gray-400"><?= t('pr.detail.no_attachment') ?></p>
       <?php else: ?>
       <div class="space-y-2">
         <?php foreach ($attachments as $attachment): ?>
         <div class="flex items-center justify-between rounded-lg bg-gray-50 p-2 text-sm">
           <div class="flex items-center gap-2">
-            <span class="text-gray-400">File</span>
+            <span class="text-gray-400"><?= t('pr.detail.file_label') ?></span>
             <div>
               <p class="font-medium"><?= h($attachment['original_filename']) ?></p>
               <p class="text-xs text-gray-400"><?= h($attachment['document_type']) ?> | <?= h($attachment['uploader'] ?? '') ?> | <?= fmtDateTime($attachment['created_at']) ?></p>
             </div>
           </div>
-          <a href="<?= BASE_URL ?>/uploads/attachments/<?= h($attachment['filename']) ?>" target="_blank" class="text-xs hover:underline" style="color:#003B5C;">Download</a>
+          <a href="<?= BASE_URL ?>/uploads/attachments/<?= h($attachment['filename']) ?>" target="_blank" class="text-xs hover:underline" style="color:#003B5C;"><?= t('pr.detail.download') ?></a>
         </div>
         <?php endforeach; ?>
       </div>
@@ -777,11 +777,11 @@ include ROOT_PATH . '/layouts/header.php';
     <div class="rounded-xl border-2 border-blue-200 bg-white p-5" id="checker-review">
       <div class="mb-4 flex items-center gap-2">
         <span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style="background:#003B5C;">✓</span>
-        <h3 class="font-semibold text-gray-800">Checker Document Review</h3>
+        <h3 class="font-semibold text-gray-800"><?= t('pr.detail.checker_review') ?></h3>
         <?php if ($allDocAcc): ?>
-        <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 font-medium">All Accepted</span>
+        <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 font-medium"><?= t('pr.detail.all_accepted') ?></span>
         <?php else: ?>
-        <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700"><?= (($chkPoAcc ? 1 : 0) + ($chkInvAcc ? 1 : 0) + ($chkGrAcc ? 1 : 0)) ?>/3 Accepted</span>
+        <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700"><?= (($chkPoAcc ? 1 : 0) + ($chkInvAcc ? 1 : 0) + ($chkGrAcc ? 1 : 0)) ?>/3 <?= t('pr.detail.x_accepted') ?></span>
         <?php endif; ?>
       </div>
 
@@ -804,7 +804,7 @@ include ROOT_PATH . '/layouts/header.php';
                      <?= $chkPoAcc ? 'checked' : '' ?>
                      onchange="toggleDocSection('po', this.checked)"
                      class="h-4 w-4 accent-emerald-600">
-              <span class="text-sm font-medium <?= $chkPoAcc ? 'text-emerald-700' : 'text-gray-500' ?>">Accept</span>
+              <span class="text-sm font-medium <?= $chkPoAcc ? 'text-emerald-700' : 'text-gray-500' ?>"><?= t('pr.detail.accept_btn') ?></span>
             </label>
           </div>
           <div id="po_comment_area" class="mt-3 <?= $chkPoAcc ? 'hidden' : '' ?>">
@@ -873,22 +873,22 @@ include ROOT_PATH . '/layouts/header.php';
         <div class="flex flex-wrap gap-2 pt-2">
           <button type="submit" name="review_decision" value="save_only"
                   class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-            บันทึก (ยังไม่ตัดสินใจ)
+            <?= t('pr.detail.save_only_btn') ?>
           </button>
           <button type="submit" name="review_decision" value="document_complete"
                   id="btn_doc_complete"
                   <?= $allDocAcc ? '' : 'disabled' ?>
                   class="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity <?= $allDocAcc ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-40' ?>"
                   style="background:#006B3F;">
-            Document Complete →
+            <?= t('pr.detail.doc_complete_btn') ?>
           </button>
           <button type="submit" name="review_decision" value="waiting_correction"
                   class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600">
-            Waiting for Correction (ส่ง email Maker)
+            <?= t('pr.detail.correction_btn') ?>
           </button>
         </div>
         <?php if (!$allDocAcc): ?>
-        <p class="text-xs text-gray-400">* กรุณา Accept ครบทั้ง 3 ส่วนเพื่อเปิดใช้ปุ่ม Document Complete</p>
+        <p class="text-xs text-gray-400">* <?= t('pr.detail.all_accepted') ?></p>
         <?php endif; ?>
       </form>
     </div>
@@ -897,35 +897,35 @@ include ROOT_PATH . '/layouts/header.php';
 
   <div class="space-y-4">
     <div class="rounded-xl border bg-white p-5">
-      <h3 class="mb-3 font-semibold text-gray-700">Workflow Actions</h3>
+      <h3 class="mb-3 font-semibold text-gray-700"><?= t('pr.detail.workflow') ?></h3>
 
       <?php if ($request['status'] === 'Pending Documents' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="submit_documents">
-        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">ส่งตรวจสอบฝ่ายบัญชี</button>
+        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.submit_accounting') ?></button>
       </form>
       <?php elseif ($request['status'] === 'Pending Accounting Review' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="submit_finance_review">
-        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">ส่งตรวจสอบฝ่ายการเงิน</button>
+        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.submit_finance') ?></button>
       </form>
       <form method="POST" class="mt-2 space-y-2">
         <input type="hidden" name="action" value="return">
         <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          <option value="">ส่งกลับไปที่...</option>
-          <option value="Procurement">จัดซื้อ</option>
-          <option value="Accounting">บัญชี</option>
+          <option value=""><?= t('pr.detail.return_to_label') ?></option>
+          <option value="Procurement">Procurement</option>
+          <option value="Accounting">Accounting</option>
         </select>
-        <textarea name="return_reason" rows="2" required placeholder="เหตุผลในการตีกลับ..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600">ส่งกลับแก้ไข</button>
+        <textarea name="return_reason" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
       </form>
       <form method="POST" class="mt-2">
         <input type="hidden" name="action" value="reject">
-        <textarea name="comment" rows="2" required placeholder="เหตุผลในการปฏิเสธ..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">ปฏิเสธ</button>
+        <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
       </form>
       <?php elseif ($request['status'] === 'Pending Finance Review' && hasRole('admin', 'checker', 'finance_manager')): ?>
-      <p class="mb-3 text-sm text-gray-600">ตรวจสอบเอกสารและกรอก Review ด้านล่าง</p>
+      <p class="mb-3 text-sm text-gray-600"><?= t('pr.detail.pending_finance') ?></p>
       <div class="space-y-1.5 mb-3">
         <?php
         $sPoAcc  = (int)($request['checker_po_accepted'] ?? 0);
@@ -942,70 +942,70 @@ include ROOT_PATH . '/layouts/header.php';
                     <?= $ds['accepted'] ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200' ?>">
           <span class="<?= $ds['accepted'] ? 'text-emerald-800' : 'text-amber-800' ?>"><?= $ds['label'] ?></span>
           <?php if ($ds['accepted']): ?>
-          <span class="text-xs font-semibold text-emerald-600">✓ Accepted</span>
+          <span class="text-xs font-semibold text-emerald-600">✓ <?= t('pr.detail.accepted') ?></span>
           <?php else: ?>
-          <span class="text-xs text-amber-600">Pending</span>
+          <span class="text-xs text-amber-600"><?= t('approval.pending') ?></span>
           <?php endif; ?>
         </div>
         <?php endforeach; ?>
       </div>
       <a href="#checker-review" class="block w-full rounded-lg border border-blue-300 py-2 text-center text-sm text-blue-600 hover:bg-blue-50">
-        ไปยังแบบฟอร์มตรวจสอบ ↓
+        <?= t('pr.detail.goto_review') ?>
       </a>
       <details class="mt-3">
-        <summary class="cursor-pointer text-xs text-red-500 hover:underline">ตัวเลือกเพิ่มเติม (Reject)</summary>
+        <summary class="cursor-pointer text-xs text-red-500 hover:underline"><?= t('pr.detail.reject_option') ?></summary>
         <form method="POST" class="mt-2">
           <input type="hidden" name="action" value="reject">
-          <textarea name="comment" rows="2" required placeholder="เหตุผลในการปฏิเสธ..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-          <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">ปฏิเสธ (Reject)</button>
+          <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+          <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
         </form>
       </details>
       <?php elseif ($request['status'] === 'Pending Management Approval' && $canApproveManagementStep): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="approve">
-        <textarea name="comment" rows="2" placeholder="ความเห็นในการอนุมัติ (ถ้ามี)..." class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium">อนุมัติให้จ่าย</button>
+        <textarea name="comment" rows="2" placeholder="<?= t('label.comment') ?>..." class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.approve_btn') ?></button>
       </form>
       <form method="POST" class="mt-2 space-y-2">
         <input type="hidden" name="action" value="return">
         <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          <option value="">ส่งกลับไปที่...</option>
-          <option value="Procurement">จัดซื้อ</option>
-          <option value="Accounting">บัญชี</option>
+          <option value=""><?= t('pr.detail.return_to_label') ?></option>
+          <option value="Procurement">Procurement</option>
+          <option value="Accounting">Accounting</option>
         </select>
-        <textarea name="return_reason" rows="2" required placeholder="เหตุผลในการตีกลับ..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600">ส่งกลับแก้ไข</button>
+        <textarea name="return_reason" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
       </form>
       <form method="POST" class="mt-2">
         <input type="hidden" name="action" value="reject">
-        <textarea name="comment" rows="2" required placeholder="เหตุผลในการปฏิเสธ..." class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600">ปฏิเสธ</button>
+        <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
       </form>
       <?php elseif ($request['status'] === 'Pending Management Approval'): ?>
-      <p class="py-2 text-center text-sm text-gray-400">รอผู้อนุมัติตาม approval matrix ดำเนินการ</p>
+      <p class="py-2 text-center text-sm text-gray-400"><?= t('pr.detail.waiting_approver') ?></p>
       <?php elseif ($request['status'] === 'Returned for Correction' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST">
         <input type="hidden" name="action" value="resubmit">
-        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium">ส่งกลับเข้ากระบวนการอีกครั้ง</button>
+        <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.resubmit_btn') ?></button>
       </form>
       <?php elseif ($request['status'] === 'Approved for Payment' && hasRole('admin', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
         <input type="hidden" name="action" value="mark_paid">
         <input type="date" name="payment_date" value="<?= h((string)$request['payment_date']) ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
-        <input type="text" name="payment_reference" value="<?= h((string)$request['payment_reference']) ?>" placeholder="เลขอ้างอิงการจ่าย / เลขเช็ค / รายการโอน" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
-        <input type="text" name="payment_bank" value="<?= h((string)$request['payment_bank']) ?>" placeholder="ธนาคารหรือช่องทางการจ่าย" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
-        <input type="text" name="payer_name" value="<?= h((string)$request['payer_name']) ?>" placeholder="ผู้ดำเนินการจ่าย" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
-        <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium">บันทึกเป็นจ่ายแล้ว</button>
+        <input type="text" name="payment_reference" value="<?= h((string)$request['payment_reference']) ?>" placeholder="<?= t('pr.detail.payment_ref') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
+        <input type="text" name="payment_bank" value="<?= h((string)$request['payment_bank']) ?>" placeholder="<?= t('label.bank') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
+        <input type="text" name="payer_name" value="<?= h((string)$request['payer_name']) ?>" placeholder="<?= t('label.payee') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
+        <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.mark_paid_btn') ?></button>
       </form>
-      <p class="mt-2 text-xs text-gray-500">กรุณาแนบเอกสาร <span class="font-medium">หลักฐานการจ่าย</span> ก่อนบันทึกเป็นจ่ายแล้ว</p>
+      <p class="mt-2 text-xs text-gray-500"><?= t('pr.detail.proof_required') ?></p>
       <?php else: ?>
-      <p class="py-2 text-center text-sm text-gray-400">ไม่มีรายการที่ดำเนินการได้ในสถานะปัจจุบัน</p>
+      <p class="py-2 text-center text-sm text-gray-400"><?= t('pr.detail.no_action') ?></p>
       <?php endif; ?>
     </div>
 
     <?php if (!empty($approvalTasks)): ?>
     <div class="rounded-xl border bg-white p-5">
-      <h3 class="mb-3 font-semibold text-gray-700">Approval Pipeline</h3>
+      <h3 class="mb-3 font-semibold text-gray-700"><?= t('pr.detail.approval_pipeline') ?></h3>
       <div class="space-y-2">
         <?php foreach ($approvalTasks as $task): ?>
         <div class="flex items-center gap-2 rounded-lg p-2 <?= $task['status'] === 'approved' ? 'bg-green-50' : ($task['status'] === 'pending' ? 'bg-yellow-50' : 'bg-gray-50') ?>">
@@ -1013,7 +1013,7 @@ include ROOT_PATH . '/layouts/header.php';
             <?= (int)$task['sequence'] ?>
           </div>
           <div class="flex-1 text-sm">
-            <p class="font-medium"><?= h($task['full_name'] ?? 'Pending assignment') ?></p>
+            <p class="font-medium"><?= h($task['full_name'] ?? t('pr.detail.pending_assignment')) ?></p>
             <?php if ($task['comment']): ?><p class="text-xs text-gray-500"><?= h($task['comment']) ?></p><?php endif; ?>
           </div>
           <?= statusBadge($task['status']) ?>
@@ -1024,9 +1024,9 @@ include ROOT_PATH . '/layouts/header.php';
     <?php endif; ?>
 
     <div class="rounded-xl border bg-white p-5">
-      <h3 class="mb-3 font-semibold text-gray-700">History</h3>
+      <h3 class="mb-3 font-semibold text-gray-700"><?= t('label.history') ?></h3>
       <?php if (empty($history)): ?>
-      <p class="text-sm text-gray-400">No history yet</p>
+      <p class="text-sm text-gray-400"><?= t('pr.detail.no_history') ?></p>
       <?php else: ?>
       <div class="space-y-3">
         <?php foreach ($history as $row): ?>

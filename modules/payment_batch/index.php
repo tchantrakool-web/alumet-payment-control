@@ -68,8 +68,6 @@ $viewId = (int)($_GET['id'] ?? 0);
 $viewBatch = null;
 $batchItems = [];
 if ($viewId) {
-    $viewBatch = $db->prepare("SELECT b.*, u.full_name as creator_name, l.full_name as locker_name FROM payment_batches b LEFT JOIN users u ON u.id=b.created_by LEFT JOIN users l ON l.id=b.locked_by WHERE b.id=?")->execute([$viewId])
-                 ? null : null;
     $stmtB = $db->prepare("SELECT b.*, u.full_name as creator_name, l.full_name as locker_name FROM payment_batches b LEFT JOIN users u ON u.id=b.created_by LEFT JOIN users l ON l.id=b.locked_by WHERE b.id=?");
     $stmtB->execute([$viewId]);
     $viewBatch = $stmtB->fetch();
@@ -98,8 +96,8 @@ include ROOT_PATH . '/layouts/header.php';
 ?>
 
 <div class="mb-5">
-  <h1 class="text-2xl font-bold text-gray-800">Payment Batch</h1>
-  <p class="text-gray-500 text-sm">สร้างและจัดการ Payment Batch สำหรับเตรียมจ่ายเงิน</p>
+  <h1 class="text-2xl font-bold text-gray-800"><?= t('batch.title') ?></h1>
+  <p class="text-gray-500 text-sm"><?= t('batch.subtitle') ?></p>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -108,9 +106,9 @@ include ROOT_PATH . '/layouts/header.php';
   <div>
     <div class="bg-white rounded-xl border overflow-hidden">
       <div class="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
-        <h3 class="font-semibold text-gray-700 text-sm">Batches</h3>
+        <h3 class="font-semibold text-gray-700 text-sm"><?= t('batch.batches') ?></h3>
         <button onclick="document.getElementById('createBatchModal').classList.remove('hidden')"
-                class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ New Batch</button>
+                class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700"><?= t('batch.new') ?></button>
       </div>
       <div class="divide-y max-h-96 overflow-y-auto">
         <?php foreach ($batches as $b): ?>
@@ -121,12 +119,12 @@ include ROOT_PATH . '/layouts/header.php';
           </div>
           <div class="text-xs text-gray-500 mt-0.5">฿<?= fmtMoney($b['total_amount']) ?> | <?= fmtDate($b['batch_date']) ?></div>
           <?php if ($b['is_locked']): ?>
-          <div class="text-xs text-orange-500 mt-0.5">🔒 Locked</div>
+          <div class="text-xs text-orange-500 mt-0.5"><?= t('batch.locked') ?></div>
           <?php endif; ?>
         </a>
         <?php endforeach; ?>
         <?php if (empty($batches)): ?>
-        <div class="px-4 py-6 text-center text-sm text-gray-400">No batches yet</div>
+        <div class="px-4 py-6 text-center text-sm text-gray-400"><?= t('batch.no_batches') ?></div>
         <?php endif; ?>
       </div>
     </div>
@@ -139,7 +137,7 @@ include ROOT_PATH . '/layouts/header.php';
       <div class="flex items-start justify-between mb-4">
         <div>
           <h3 class="text-lg font-bold text-gray-800"><?= h($viewBatch['batch_no']) ?></h3>
-          <p class="text-sm text-gray-500">Created by <?= h($viewBatch['creator_name'] ?? '') ?> | <?= fmtDateTime($viewBatch['created_at']) ?></p>
+          <p class="text-sm text-gray-500"><?= t('batch.created_by') ?> <?= h($viewBatch['creator_name'] ?? '') ?> | <?= fmtDateTime($viewBatch['created_at']) ?></p>
         </div>
         <div class="text-right">
           <p class="text-2xl font-bold text-blue-700">฿<?= fmtMoney($viewBatch['total_amount']) ?></p>
@@ -148,9 +146,9 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
 
       <div class="grid grid-cols-3 gap-3 mb-4 text-sm">
-        <div><p class="text-xs text-gray-500">Batch Date</p><p class="font-medium"><?= fmtDate($viewBatch['batch_date']) ?></p></div>
-        <div><p class="text-xs text-gray-500">Payment Type</p><p class="font-medium capitalize"><?= h($viewBatch['payment_type']) ?></p></div>
-        <div><p class="text-xs text-gray-500">Locked</p>
+        <div><p class="text-xs text-gray-500"><?= t('batch.batch_date') ?></p><p class="font-medium"><?= fmtDate($viewBatch['batch_date']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('batch.payment_type') ?></p><p class="font-medium capitalize"><?= h($viewBatch['payment_type']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('batch.locked') ?></p>
           <p class="font-medium"><?= $viewBatch['is_locked'] ? '🔒 Yes — ' . h($viewBatch['locker_name'] ?? '') : 'No' ?></p>
         </div>
       </div>
@@ -160,18 +158,18 @@ include ROOT_PATH . '/layouts/header.php';
         <input type="hidden" name="action" value="lock_batch">
         <input type="hidden" name="batch_id" value="<?= $viewBatch['id'] ?>">
         <button class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-          🔒 Lock Batch
+          <?= t('batch.lock_btn') ?>
         </button>
       </form>
       <?php endif; ?>
 
       <table class="w-full text-sm">
         <thead><tr class="text-left text-xs text-gray-500 border-b bg-gray-50">
-          <th class="px-3 py-2">Request No.</th>
-          <th class="px-3 py-2">Vendor</th>
-          <th class="px-3 py-2">Due Date</th>
-          <th class="px-3 py-2 text-right">Amount</th>
-          <th class="px-3 py-2">Status</th>
+          <th class="px-3 py-2"><?= t('label.request_no') ?></th>
+          <th class="px-3 py-2"><?= t('label.vendor') ?></th>
+          <th class="px-3 py-2"><?= t('label.due_date') ?></th>
+          <th class="px-3 py-2 text-right"><?= t('label.amount') ?></th>
+          <th class="px-3 py-2"><?= t('label.status') ?></th>
         </tr></thead>
         <tbody>
           <?php foreach ($batchItems as $item): ?>
@@ -189,7 +187,7 @@ include ROOT_PATH . '/layouts/header.php';
           <?php endforeach; ?>
         </tbody>
         <tfoot><tr class="bg-gray-50 font-semibold border-t text-sm">
-          <td colspan="3" class="px-3 py-2">Total (<?= count($batchItems) ?> items)</td>
+          <td colspan="3" class="px-3 py-2"><?= t('batch.total') ?> (<?= count($batchItems) ?> <?= t('batch.items') ?>)</td>
           <td class="px-3 py-2 text-right text-blue-700">฿<?= fmtMoney(array_sum(array_column($batchItems, 'amount'))) ?></td>
           <td></td>
         </tr></tfoot>
@@ -198,7 +196,7 @@ include ROOT_PATH . '/layouts/header.php';
     <?php else: ?>
     <div class="bg-white rounded-xl border p-8 text-center text-gray-400">
       <p class="text-4xl mb-2">💼</p>
-      <p>เลือก Batch หรือสร้าง Batch ใหม่</p>
+      <p><?= t('batch.select_or_create') ?></p>
     </div>
     <?php endif; ?>
   </div>
@@ -208,19 +206,19 @@ include ROOT_PATH . '/layouts/header.php';
 <div id="createBatchModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
   <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
     <div class="flex items-center justify-between px-5 py-4 border-b">
-      <h3 class="font-semibold text-gray-800">Create Payment Batch</h3>
+      <h3 class="font-semibold text-gray-800"><?= t('batch.create_title') ?></h3>
       <button onclick="document.getElementById('createBatchModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
     </div>
     <form method="POST" class="p-5">
       <input type="hidden" name="action" value="create_batch">
       <div class="grid grid-cols-2 gap-3 mb-4">
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Batch Date</label>
+          <label class="block text-xs text-gray-500 mb-1"><?= t('batch.batch_date') ?></label>
           <input type="date" name="batch_date" value="<?= date('Y-m-d') ?>" required
                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Payment Type</label>
+          <label class="block text-xs text-gray-500 mb-1"><?= t('batch.payment_type') ?></label>
           <select name="payment_type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
             <option value="cheque">Cheque</option>
             <option value="transfer">Bank Transfer</option>
@@ -233,9 +231,9 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
 
       <div class="mb-4">
-        <label class="block text-xs text-gray-500 mb-2">Select Payment Requests (Approved for Payment)</label>
+        <label class="block text-xs text-gray-500 mb-2"><?= t('batch.select_prs') ?></label>
         <?php if (empty($readyPRs)): ?>
-        <p class="text-sm text-gray-400 p-3 border rounded-lg text-center">No payment request is approved for payment</p>
+        <p class="text-sm text-gray-400 p-3 border rounded-lg text-center"><?= t('batch.no_prs') ?></p>
         <?php else: ?>
         <div class="border rounded-lg divide-y max-h-64 overflow-y-auto">
           <?php foreach ($readyPRs as $pr): ?>
@@ -256,8 +254,8 @@ include ROOT_PATH . '/layouts/header.php';
 
       <div class="flex gap-2 justify-end">
         <button type="button" onclick="document.getElementById('createBatchModal').classList.add('hidden')"
-                class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Create Batch</button>
+                class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"><?= t('btn.cancel') ?></button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"><?= t('batch.create_btn') ?></button>
       </div>
     </form>
   </div>

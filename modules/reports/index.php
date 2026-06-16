@@ -248,22 +248,22 @@ include ROOT_PATH . '/layouts/header.php';
 
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
   <div>
-    <h1 class="text-2xl font-bold text-gray-800">Reports</h1>
+    <h1 class="text-2xl font-bold text-gray-800"><?= t('report.title') ?></h1>
     <p class="text-sm text-gray-500 mt-1"><?= h($reportTitle) ?> · <?= h($reportDescription) ?></p>
   </div>
   <a href="?<?= http_build_query($baseQuery + ['export' => 'csv']) ?>"
      class="inline-flex items-center rounded-lg border px-4 py-2 text-sm font-medium"
      style="border-color:#B8D9C5; background:#ECF7EF; color:#006B3F;">
-    Export CSV
+    <?= t('btn.export_csv') ?>
   </a>
 </div>
 
 <div class="flex flex-wrap gap-2 mb-5">
   <?php foreach ([
-      ['aging', 'Vendor Aging'],
-      ['payment_forecast', 'Payment Forecast'],
-      ['paid_unpaid', 'Paid / Unpaid'],
-      ['approval_lead_time', 'Approval Lead Time'],
+      ['aging', t('report.vendor_aging')],
+      ['payment_forecast', t('report.payment_forecast')],
+      ['paid_unpaid', t('report.paid_unpaid')],
+      ['approval_lead_time', t('report.approval_lead')],
   ] as [$key, $label]): ?>
   <a href="?report=<?= h($key) ?>"
      class="rounded-lg border px-4 py-2 text-sm font-medium <?= $report === $key ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-50' ?>"
@@ -289,45 +289,45 @@ include ROOT_PATH . '/layouts/header.php';
       <input type="hidden" name="report" value="<?= h($report) ?>">
       <?php if (in_array($report, ['payment_forecast', 'paid_unpaid'], true)): ?>
       <div>
-        <label class="mb-1 block text-xs text-gray-500">From</label>
+        <label class="mb-1 block text-xs text-gray-500"><?= t('report.from') ?></label>
         <input type="date" name="date_from" value="<?= h($dateFrom) ?>" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
       </div>
       <div>
-        <label class="mb-1 block text-xs text-gray-500">To</label>
+        <label class="mb-1 block text-xs text-gray-500"><?= t('report.to') ?></label>
         <input type="date" name="date_to" value="<?= h($dateTo) ?>" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
       </div>
       <?php endif; ?>
       <div>
-        <label class="mb-1 block text-xs text-gray-500">Vendor</label>
-        <input type="text" name="vendor" value="<?= h($vendor) ?>" placeholder="Search vendor name or code" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+        <label class="mb-1 block text-xs text-gray-500"><?= t('label.vendor') ?></label>
+        <input type="text" name="vendor" value="<?= h($vendor) ?>" placeholder="<?= t('report.vendor_filter') ?>" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
       </div>
       <div class="flex gap-2">
-        <button type="submit" class="theme-btn-primary rounded-lg px-4 py-2 text-sm font-medium">Apply</button>
-        <a href="?report=<?= h($report) ?>" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">Reset</a>
+        <button type="submit" class="theme-btn-primary rounded-lg px-4 py-2 text-sm font-medium"><?= t('btn.apply') ?></button>
+        <a href="?report=<?= h($report) ?>" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"><?= t('btn.reset') ?></a>
       </div>
     </form>
   </div>
 
   <div class="rounded-xl border p-4 text-white" style="background:linear-gradient(135deg, #003B5C 0%, #006B3F 100%); border-color:#0A536F;">
-    <p class="text-xs uppercase tracking-[0.2em]" style="color:#D9F0B4;">Report Context</p>
+    <p class="text-xs uppercase tracking-[0.2em]" style="color:#D9F0B4;"><?= t('report.context') ?></p>
     <div class="mt-3 space-y-2 text-sm">
       <div class="flex items-center justify-between gap-4">
-        <span style="color:#DCE8F0;">Mode</span>
+        <span style="color:#DCE8F0;"><?= t('report.mode') ?></span>
         <span class="font-medium"><?= h($reportTitle) ?></span>
       </div>
       <div class="flex items-center justify-between gap-4">
-        <span style="color:#DCE8F0;">Vendor Filter</span>
-        <span class="font-medium"><?= $vendor !== '' ? h($vendor) : 'All vendors' ?></span>
+        <span style="color:#DCE8F0;"><?= t('report.vendor_filter') ?></span>
+        <span class="font-medium"><?= $vendor !== '' ? h($vendor) : t('report.all_vendors') ?></span>
       </div>
       <?php if (in_array($report, ['payment_forecast', 'paid_unpaid'], true)): ?>
       <div class="flex items-center justify-between gap-4">
-        <span style="color:#DCE8F0;">Date Range</span>
+        <span style="color:#DCE8F0;"><?= t('report.date_range') ?></span>
         <span class="font-medium"><?= h(fmtDate($dateFrom)) ?> - <?= h(fmtDate($dateTo)) ?></span>
       </div>
       <?php else: ?>
       <div class="flex items-center justify-between gap-4">
-        <span style="color:#DCE8F0;">Date Basis</span>
-        <span class="font-medium"><?= $report === 'aging' ? 'Current open balance' : 'Completed requests' ?></span>
+        <span style="color:#DCE8F0;"><?= t('report.date_basis') ?></span>
+        <span class="font-medium"><?= $report === 'aging' ? t('report.open_balance') : t('report.completed_requests') ?></span>
       </div>
       <?php endif; ?>
     </div>
@@ -338,7 +338,7 @@ include ROOT_PATH . '/layouts/header.php';
   <div class="xl:col-span-2 rounded-xl border bg-white p-4">
     <div class="mb-4 flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-sm font-semibold text-gray-700">Visual Summary</h2>
+        <h2 class="text-sm font-semibold text-gray-700"><?= t('report.visual_summary') ?></h2>
         <p class="text-xs text-gray-400"><?= h($chart['label']) ?></p>
       </div>
     </div>
@@ -346,7 +346,7 @@ include ROOT_PATH . '/layouts/header.php';
   </div>
 
   <div class="rounded-xl border bg-white p-4">
-    <h2 class="text-sm font-semibold text-gray-700 mb-3">Highlights</h2>
+    <h2 class="text-sm font-semibold text-gray-700 mb-3"><?= t('report.highlights') ?></h2>
     <div class="space-y-3 text-sm">
       <?php if ($report === 'aging'): ?>
       <div class="rounded-lg bg-red-50 p-3">

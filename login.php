@@ -21,15 +21,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect(BASE_URL . '/dashboard.php');
         }
     }
-    $error = 'Username or password is incorrect';
+    $error = t('login.invalid');
 }
 ?>
 <!DOCTYPE html>
-<html lang="th">
+<html lang="<?= defined('APP_LANG') ? APP_LANG : 'en' ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login | Payment Control Tower</title>
+<title><?= t('login.title') ?> | Payment Control Tower</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen flex items-center justify-center px-4" style="background:radial-gradient(circle at top left, rgba(164,214,94,.22), transparent 24%), linear-gradient(135deg, #003B5C 0%, #005432 100%);">
@@ -46,9 +46,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><?= h($error) ?></div>
       <?php endif; ?>
 
+      <div class="mb-4 flex justify-end">
+        <?php $currentLang = defined('APP_LANG') ? APP_LANG : 'en'; ?>
+        <a href="?lang=<?= $currentLang === 'en' ? 'th' : 'en' ?>" class="text-xs px-2 py-1 rounded border text-gray-500 hover:bg-gray-100 transition-colors"><?= $currentLang === 'en' ? 'TH' : 'EN' ?></a>
+      </div>
       <form method="POST" class="space-y-4">
         <div>
-          <label class="mb-1 block text-sm font-medium text-gray-700">Username</label>
+          <label class="mb-1 block text-sm font-medium text-gray-700"><?= t('login.username') ?></label>
           <input
             type="text"
             name="username"
@@ -58,11 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             style="border-color:#cdd9d2;"
             onfocus="this.style.borderColor='#006B3F'; this.style.boxShadow='0 0 0 3px rgba(0,107,63,.15)'"
             onblur="this.style.borderColor='#cdd9d2'; this.style.boxShadow='none'"
-            placeholder="Enter username"
+            placeholder="<?= t('login.placeholder.username') ?>"
           >
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium text-gray-700">Password</label>
+          <label class="mb-1 block text-sm font-medium text-gray-700"><?= t('login.password') ?></label>
           <input
             type="password"
             name="password"
@@ -71,16 +75,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             style="border-color:#cdd9d2;"
             onfocus="this.style.borderColor='#006B3F'; this.style.boxShadow='0 0 0 3px rgba(0,107,63,.15)'"
             onblur="this.style.borderColor='#cdd9d2'; this.style.boxShadow='none'"
-            placeholder="Enter password"
+            placeholder="<?= t('login.placeholder.password') ?>"
           >
         </div>
         <button type="submit" class="w-full rounded-xl py-2.5 font-semibold text-white transition hover:opacity-95" style="background:#006B3F;">
-          Sign In
+          <?= t('btn.login') ?>
         </button>
       </form>
 
       <div class="mt-6 rounded-2xl border p-4" style="background:#F7FBF8; border-color:#DCE8F0;">
-        <p class="mb-2 text-xs font-medium text-gray-500">Demo Accounts</p>
+        <p class="mb-2 text-xs font-medium text-gray-500"><?= t('login.demo_accounts') ?></p>
         <div class="grid grid-cols-2 gap-1 text-xs text-gray-600">
           <span>admin / admin1234</span><span style="color:#003B5C;">Admin</span>
           <span>maker1 / maker1234</span><span style="color:#006B3F;">Maker</span>
