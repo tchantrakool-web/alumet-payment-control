@@ -56,6 +56,7 @@ function statusBadge(string $status): string {
         'Pending Finance Review' => 'bg-sky-100 text-sky-700',
         'Pending Management Approval' => 'bg-orange-100 text-orange-700',
         'Approved for Payment' => 'bg-teal-100 text-teal-700',
+        'Cheque Prepared'   => 'bg-blue-100 text-blue-700',
         'Returned for Correction' => 'bg-rose-100 text-rose-700',
         'Waiting Check'     => 'bg-yellow-100 text-yellow-700',
         'Checked'           => 'bg-blue-100 text-blue-700',
@@ -77,7 +78,8 @@ function statusBadge(string $status): string {
         'void'              => 'bg-gray-200 text-gray-600',
     ];
     $cls = $map[$status] ?? 'bg-gray-100 text-gray-600';
-    return "<span class=\"inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {$cls}\">{$status}</span>";
+    $label = htmlspecialchars($status, ENT_QUOTES, 'UTF-8');
+    return "<span class=\"inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {$cls}\">{$label}</span>";
 }
 
 function agingLabel(int $days): string {

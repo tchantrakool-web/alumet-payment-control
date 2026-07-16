@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../config/bootstrap.php';
 require_once ROOT_PATH . '/config/excel_reader.php';
 requireLogin();
-if (!canAccess('import')) { flash('error','Access denied'); redirect(BASE_URL . '/modules/import/'); }
+if (!canEdit('import')) { flash('error','Import Center is read-only for your role.'); redirect(BASE_URL . '/modules/import/'); }
 
 $returnUrl = '/modules/import/';
 if (!empty($_POST['return_url'])) {

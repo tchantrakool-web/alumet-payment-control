@@ -1,8 +1,8 @@
 <?php
 require_once __DIR__ . '/../../config/bootstrap.php';
 requireLogin();
-if (!canAccess('import')) {
-    flash('error', 'Access denied');
+if (!canEdit('import')) {
+    flash('error', 'Import is read-only for your role.');
     redirect(BASE_URL . '/modules/ap_invoices/');
 }
 

@@ -30,9 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= t('login.title') ?> | Payment Control Tower</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen flex items-center justify-center px-4" style="background:radial-gradient(circle at top left, rgba(164,214,94,.22), transparent 24%), linear-gradient(135deg, #003B5C 0%, #005432 100%);">
+<body class="min-h-screen flex items-center justify-center px-4" style="font-family:'Sarabun','Segoe UI',system-ui,sans-serif;background:radial-gradient(circle at top left, rgba(164,214,94,.22), transparent 24%), linear-gradient(135deg, #003B5C 0%, #005432 100%);">
 <div class="w-full max-w-md">
   <div class="overflow-hidden rounded-3xl border border-white/25 bg-white/95 shadow-2xl backdrop-blur">
     <div class="px-8 py-7 text-center" style="background:linear-gradient(135deg, #003B5C 0%, #006B3F 100%);">

@@ -20,6 +20,9 @@ include ROOT_PATH . '/layouts/header.php';
 </div>
 
 <!-- Upload Cards -->
+<?php if (!canEdit('import')): ?>
+<div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">View-only access: importing data is assigned to Maker and Finance roles.</div>
+<?php endif; ?>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
 
   <!-- SAP Import -->
@@ -31,7 +34,7 @@ include ROOT_PATH . '/layouts/header.php';
         <p class="text-xs text-gray-500"><?= t('import.sap.desc') ?></p>
       </div>
     </div>
-    <form method="POST" action="<?= BASE_URL ?>/modules/import/upload_sap.php" enctype="multipart/form-data">
+    <?php if (canEdit('import')): ?><form method="POST" action="<?= BASE_URL ?>/modules/import/upload_sap.php" enctype="multipart/form-data">
       <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mb-3 hover:border-blue-400 transition-colors">
         <input type="file" name="excel_file" id="sapFile" accept=".xlsx,.xls,.csv" class="hidden"
                onchange="document.getElementById('sapName').textContent = this.files[0]?.name || '<?= t('import.sap.click') ?>'">
@@ -44,7 +47,7 @@ include ROOT_PATH . '/layouts/header.php';
       <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
         <?= t('import.sap.btn') ?>
       </button>
-    </form>
+    </form><?php else: ?><p class="rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-500">Import history is available below.</p><?php endif; ?>
   </div>
 
   <!-- Finance Import -->
@@ -56,9 +59,9 @@ include ROOT_PATH . '/layouts/header.php';
         <p class="text-xs text-gray-500"><?= t('import.finance.desc') ?></p>
       </div>
     </div>
-    <form method="POST" action="<?= BASE_URL ?>/modules/import/upload_finance.php" enctype="multipart/form-data">
+    <?php if (canEdit('import')): ?><form method="POST" action="<?= BASE_URL ?>/modules/import/upload_finance.php" enctype="multipart/form-data">
       <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mb-3 hover:border-green-400 transition-colors">
-        <input type="file" name="excel_file" id="finFile" accept=".xlsx,.xls,.csv" class="hidden"
+        <input type="file" name="excel_file" id="finFile" accept=".xlsx,.csv" class="hidden"
                onchange="document.getElementById('finName').textContent = this.files[0]?.name || '<?= t('import.finance.click') ?>'">
         <label for="finFile" class="cursor-pointer">
           <div class="text-2xl mb-1">📁</div>
@@ -73,7 +76,7 @@ include ROOT_PATH . '/layouts/header.php';
       <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
         <?= t('import.finance.btn') ?>
       </button>
-    </form>
+    </form><?php else: ?><p class="rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-500">Import history is available below.</p><?php endif; ?>
   </div>
 </div>
 
@@ -120,7 +123,9 @@ include ROOT_PATH . '/layouts/header.php';
       <tbody>
         <?php foreach ($finBatches as $b): ?>
         <tr class="border-b last:border-0 hover:bg-gray-50">
-          <td class="py-1.5 font-mono text-xs"><?= h($b['batch_no']) ?></td>
+          <td class="py-1.5 font-mono text-xs">
+            <a href="<?= BASE_URL ?>/modules/import/finance_detail.php?id=<?= (int)$b['id'] ?>" class="text-blue-600 hover:underline"><?= h($b['batch_no']) ?></a>
+          </td>
           <td class="py-1.5 text-xs"><?= h($b['period'] ?? '-') ?></td>
           <td class="py-1.5 text-right"><?= $b['imported_records'] ?></td>
           <td class="py-1.5 text-right <?= $b['error_records'] > 0 ? 'text-red-500' : 'text-gray-400' ?>"><?= $b['error_records'] ?></td>

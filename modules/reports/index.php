@@ -275,9 +275,9 @@ include ROOT_PATH . '/layouts/header.php';
 
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
   <?php foreach ($summary as $card): ?>
-  <div class="rounded-xl border bg-white p-4">
+  <div class="rounded-xl border bg-white p-4 shadow-sm">
     <p class="text-xs font-medium uppercase tracking-wide text-gray-400"><?= h($card['label']) ?></p>
-    <p class="mt-2 text-2xl font-bold text-gray-800"><?= h($card['value']) ?></p>
+    <p class="mt-2 break-words text-xl font-bold leading-tight text-gray-800 xl:text-2xl"><?= h($card['value']) ?></p>
     <p class="mt-1 text-xs text-gray-500"><?= h($card['hint']) ?></p>
   </div>
   <?php endforeach; ?>
@@ -335,17 +335,20 @@ include ROOT_PATH . '/layouts/header.php';
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
-  <div class="xl:col-span-2 rounded-xl border bg-white p-4">
+  <div class="xl:col-span-2 overflow-hidden rounded-xl border bg-white p-5 shadow-sm">
     <div class="mb-4 flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-sm font-semibold text-gray-700"><?= t('report.visual_summary') ?></h2>
-        <p class="text-xs text-gray-400"><?= h($chart['label']) ?></p>
+        <h2 class="text-base font-semibold text-gray-800"><?= t('report.visual_summary') ?></h2>
+        <p class="mt-0.5 text-xs text-gray-400"><?= h($chart['label']) ?></p>
       </div>
+      <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"><?= number_format(count($chart['values'])) ?> data point(s)</span>
     </div>
-    <canvas id="reportChart" height="120"></canvas>
+    <div class="relative h-[300px] w-full sm:h-[320px]">
+      <canvas id="reportChart"></canvas>
+    </div>
   </div>
 
-  <div class="rounded-xl border bg-white p-4">
+  <div class="rounded-xl border bg-white p-5 shadow-sm">
     <h2 class="text-sm font-semibold text-gray-700 mb-3"><?= t('report.highlights') ?></h2>
     <div class="space-y-3 text-sm">
       <?php if ($report === 'aging'): ?>
@@ -540,6 +543,25 @@ const chartLabels = <?= json_encode($chart['labels']) ?>;
 const chartValues = <?= json_encode($chart['values']) ?>;
 const chartType = <?= json_encode($chart['type']) ?>;
 const chartLabel = <?= json_encode($chart['label']) ?>;
+const chartValueKind = <?= json_encode(in_array($report, ['aging', 'payment_forecast'], true) ? 'currency' : ($report === 'approval_lead_time' ? 'hours' : 'count')) ?>;
+const isDoughnut = chartType === 'doughnut';
+const isHorizontalBar = chartType === 'bar';
+
+function compactNumber(value) {
+    return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value) || 0);
+}
+
+function formattedValue(value) {
+    const number = Number(value) || 0;
+    if (chartValueKind === 'currency') return 'THB ' + number.toLocaleString('en-US', {maximumFractionDigits: 2});
+    if (chartValueKind === 'hours') return number.toLocaleString('en-US', {maximumFractionDigits: 1}) + ' hrs';
+    return number.toLocaleString('en-US');
+}
+
+function shortLabel(value) {
+    const label = String(value ?? '');
+    return label.length > 24 ? label.slice(0, 23) + '…' : label;
+}
 
 new Chart(document.getElementById('reportChart'), {
     type: chartType,
@@ -548,25 +570,68 @@ new Chart(document.getElementById('reportChart'), {
         datasets: [{
             label: chartLabel,
             data: chartValues,
-            backgroundColor: chartType === 'doughnut'
-                ? ['#006B3F', '#003B5C', '#A4D65E', '#dc2626', '#0A536F', '#64748b', '#7BBF56']
-                : 'rgba(0, 107, 63, 0.18)',
-            borderColor: chartType === 'doughnut'
-                ? ['#006B3F', '#003B5C', '#A4D65E', '#dc2626', '#0A536F', '#64748b', '#7BBF56']
+            backgroundColor: isDoughnut
+                ? ['#006B3F', '#0A536F', '#A4D65E', '#F59E0B', '#DC2626', '#64748B', '#7BBF56']
+                : isHorizontalBar ? 'rgba(0, 107, 63, 0.78)' : 'rgba(10, 83, 111, 0.14)',
+            borderColor: isDoughnut
+                ? ['#006B3F', '#0A536F', '#A4D65E', '#F59E0B', '#DC2626', '#64748B', '#7BBF56']
                 : '#006B3F',
-            borderWidth: 2,
+            borderWidth: isDoughnut ? 0 : 2,
+            borderRadius: isHorizontalBar ? 6 : 0,
+            maxBarThickness: 28,
+            pointRadius: chartType === 'line' ? 3 : 0,
+            pointHoverRadius: chartType === 'line' ? 5 : 0,
+            pointBackgroundColor: '#006B3F',
             fill: chartType === 'line',
-            tension: 0.3
+            tension: 0.32,
+            spacing: isDoughnut ? 3 : 0
         }]
     },
     options: {
+        responsive: true,
         maintainAspectRatio: false,
+        indexAxis: isHorizontalBar ? 'y' : 'x',
+        cutout: isDoughnut ? '68%' : undefined,
+        animation: {duration: 350},
+        layout: {padding: {top: 4, right: 8, bottom: 0, left: 4}},
         plugins: {
-            legend: { display: chartType === 'doughnut', position: 'bottom' }
+            legend: {
+                display: isDoughnut,
+                position: window.innerWidth < 640 ? 'bottom' : 'right',
+                labels: {usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8, padding: 14, color: '#475569', font: {size: 11}}
+            },
+            tooltip: {
+                backgroundColor: '#17313D',
+                padding: 10,
+                cornerRadius: 8,
+                callbacks: {
+                    label: context => `${context.dataset.label}: ${formattedValue(context.raw)}`
+                }
+            }
         },
-        scales: chartType === 'doughnut' ? {} : {
+        scales: isDoughnut ? {} : isHorizontalBar ? {
+            x: {
+                beginAtZero: true,
+                grid: {color: 'rgba(148,163,184,.16)', drawBorder: false},
+                border: {display: false},
+                ticks: {color: '#64748B', font: {size: 10}, callback: value => compactNumber(value)}
+            },
             y: {
-                beginAtZero: true
+                grid: {display: false},
+                border: {display: false},
+                ticks: {color: '#475569', font: {size: 10}, callback: function(value) { return shortLabel(this.getLabelForValue(value)); }}
+            }
+        } : {
+            x: {
+                grid: {display: false},
+                border: {display: false},
+                ticks: {color: '#64748B', font: {size: 10}, maxRotation: 0, autoSkip: true, maxTicksLimit: 8}
+            },
+            y: {
+                beginAtZero: true,
+                grid: {color: 'rgba(148,163,184,.16)', drawBorder: false},
+                border: {display: false},
+                ticks: {color: '#64748B', font: {size: 10}, callback: value => compactNumber(value)}
             }
         }
     }

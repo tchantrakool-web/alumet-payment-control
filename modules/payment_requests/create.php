@@ -9,15 +9,18 @@ if (!hasRole('admin', 'maker', 'finance_manager')) {
 $pageTitle = 'Create Payment Request';
 $db = getDB();
 
-$preInvoiceId = (int)($_GET['invoice_id'] ?? 0);
-$preInvoice = null;
-if ($preInvoiceId) {
-    $stmt = $db->prepare("SELECT * FROM sap_ap_invoices WHERE id = ? AND is_deleted = 0");
-    $stmt->execute([$preInvoiceId]);
-    $preInvoice = $stmt->fetch();
+$formAction = (string)($_POST['action'] ?? '');
+$entryInvoiceIds = [];
+if ((int)($_GET['invoice_id'] ?? 0) > 0) {
+    $entryInvoiceIds[] = (int)$_GET['invoice_id'];
 }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction !== 'create_payment_request') {
+    $entryInvoiceIds = array_values(array_unique(array_map('intval', array_filter($_POST['invoice_ids'] ?? []))));
+}
+$selectionMode = !empty($entryInvoiceIds);
+$preselectedInvoices = [];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_request') {
     $vendorId = (int)($_POST['vendor_id'] ?? 0);
     $vendorName = trim($_POST['vendor_name'] ?? '');
     $vendorCode = trim($_POST['vendor_code'] ?? '');
@@ -42,12 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $placeholders = implode(',', array_fill(0, count($invoiceIds), '?'));
-    $stmtInvoices = $db->prepare("SELECT * FROM sap_ap_invoices WHERE id IN ($placeholders) AND is_deleted = 0");
+    $stmtInvoices = $db->prepare("SELECT i.* FROM sap_ap_invoices i WHERE i.id IN ($placeholders) AND i.is_deleted = 0 AND i.ap_balance > 0 AND COALESCE(i.payment_status, '') NOT IN ('Pending Documents', 'Paid', 'Rejected', 'Cancelled') AND NOT EXISTS (SELECT 1 FROM payment_request_items pri JOIN payment_requests pr ON pr.id=pri.payment_request_id WHERE pri.sap_invoice_id=i.id AND pr.is_deleted=0)");
     $stmtInvoices->execute($invoiceIds);
     $selectedInvoices = $stmtInvoices->fetchAll();
 
-    if (empty($selectedInvoices)) {
-        flash('error', 'Selected AP invoices were not found');
+    if (count($selectedInvoices) !== count($invoiceIds)) {
+        flash('error', 'One or more selected invoices are no longer available for a new Payment Request.');
         redirect(BASE_URL . '/modules/payment_requests/create.php');
     }
 
@@ -57,8 +60,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect(BASE_URL . '/modules/payment_requests/create.php');
     }
 
-    $vendorName = $vendorName !== '' ? $vendorName : (string)($selectedInvoices[0]['vendor_name'] ?? '');
-    $vendorCode = $vendorCode !== '' ? $vendorCode : (string)($selectedInvoices[0]['vendor_code'] ?? '');
+    // Supplier identity always comes from the selected invoice records, never
+    // from editable request data submitted by the browser.
+    $vendorName = (string)($selectedInvoices[0]['vendor_name'] ?? '');
+    $vendorCode = (string)($selectedInvoices[0]['vendor_code'] ?? '');
+    $stmtVendor = $db->prepare('SELECT id FROM vendors WHERE vendor_code = ? OR vendor_name = ? ORDER BY CASE WHEN vendor_code = ? THEN 0 ELSE 1 END LIMIT 1');
+    $stmtVendor->execute([$vendorCode, $vendorName, $vendorCode]);
+    $vendorId = (int)($stmtVendor->fetchColumn() ?: 0);
 
     $grossAmount = array_sum(array_map(static fn($inv) => (float)$inv['ap_balance'], $selectedInvoices));
     $whtBaseAmount = $postedWhtBase > 0 ? $postedWhtBase : $grossAmount;
@@ -181,16 +189,36 @@ foreach ($vendors as $vendor) {
     $vendorMap[$key] = (int)$vendor['id'];
 }
 
-$stmtInvoices = $db->prepare("
-    SELECT *
-    FROM sap_ap_invoices
+$invoiceSql = "
+    SELECT * FROM sap_ap_invoices
     WHERE is_deleted = 0
       AND ap_balance > 0
       AND COALESCE(payment_status, '') NOT IN ('Pending Documents', 'Paid', 'Rejected', 'Cancelled')
-    ORDER BY vendor_name, ap_invoice_date, ap_invoice_doc_num
-");
-$stmtInvoices->execute();
+      AND NOT EXISTS (SELECT 1 FROM payment_request_items pri JOIN payment_requests pr ON pr.id=pri.payment_request_id WHERE pri.sap_invoice_id=sap_ap_invoices.id AND pr.is_deleted=0)
+";
+$invoiceParams = [];
+if ($selectionMode) {
+    $selectionPlaceholders = implode(',', array_fill(0, count($entryInvoiceIds), '?'));
+    $invoiceSql .= " AND id IN ($selectionPlaceholders)";
+    $invoiceParams = $entryInvoiceIds;
+}
+$invoiceSql .= ' ORDER BY vendor_name, ap_invoice_date, ap_invoice_doc_num';
+$stmtInvoices = $db->prepare($invoiceSql);
+$stmtInvoices->execute($invoiceParams);
 $invoices = $stmtInvoices->fetchAll();
+
+if ($selectionMode) {
+    if (count($invoices) !== count($entryInvoiceIds)) {
+        flash('error', 'Some selected invoices are already paid or assigned to another Payment Request.');
+        redirect(BASE_URL . '/modules/ap_invoices/');
+    }
+    $selectedVendors = array_values(array_unique(array_map(static fn($invoice) => trim((string)$invoice['vendor_name']), $invoices)));
+    if (count($selectedVendors) !== 1) {
+        flash('error', 'Please select invoices from one supplier only.');
+        redirect(BASE_URL . '/modules/ap_invoices/');
+    }
+    $preselectedInvoices = $invoices;
+}
 
 $invoicesByVendor = [];
 foreach ($invoices as $invoice) {
@@ -223,12 +251,13 @@ include ROOT_PATH . '/layouts/header.php';
   <p class="mt-1 text-sm text-gray-500"><?= t('pr.create.subtitle') ?></p>
 </div>
 
-<form method="POST" x-data='prForm(<?= json_encode($vendorMap, JSON_UNESCAPED_UNICODE) ?>, <?= json_encode($preInvoice ? [[
-    'id' => (int)$preInvoice['id'],
-    'amount' => (float)$preInvoice['ap_balance'],
-    'vendor' => $preInvoice['vendor_name'],
-    'code' => $preInvoice['vendor_code'] ?? '',
-]] : [], JSON_UNESCAPED_UNICODE) ?>)' class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+<form method="POST" x-data='prForm(<?= json_encode($vendorMap, JSON_UNESCAPED_UNICODE) ?>, <?= json_encode(array_map(static fn($invoice) => [
+    'id' => (int)$invoice['id'],
+    'amount' => (float)$invoice['ap_balance'],
+    'vendor' => $invoice['vendor_name'],
+    'code' => $invoice['vendor_code'] ?? '',
+], $preselectedInvoices), JSON_UNESCAPED_UNICODE) ?>)' class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+  <input type="hidden" name="action" value="create_payment_request">
   <div class="space-y-4 lg:col-span-2">
     <div class="rounded-xl border bg-white p-5">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -298,7 +327,7 @@ include ROOT_PATH . '/layouts/header.php';
                     <input type="checkbox" name="invoice_ids[]" value="<?= (int)$invoice['id'] ?>"
                            :checked="selected.includes(<?= (int)$invoice['id'] ?>)"
                            @click.stop="toggleInvoice(<?= (int)$invoice['id'] ?>, <?= (float)$invoice['ap_balance'] ?>, '<?= addslashes($invoice['vendor_name']) ?>', '<?= addslashes($invoice['vendor_code'] ?? '') ?>')"
-                           <?= $preInvoice && (int)$preInvoice['id'] === (int)$invoice['id'] ? 'checked' : '' ?>>
+                           <?= in_array((int)$invoice['id'], $entryInvoiceIds, true) ? 'checked' : '' ?>>
                   </td>
                   <td class="px-3 py-2 font-mono text-xs"><?= h($invoice['ap_invoice_doc_num']) ?></td>
                   <td class="px-3 py-2 text-xs"><?= fmtDate($invoice['ap_invoice_date']) ?></td>

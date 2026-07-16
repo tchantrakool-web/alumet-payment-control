@@ -12,11 +12,16 @@ $db = getDB();
 $filterVendor = trim($_GET['vendor'] ?? '');
 $filterInvoiceFrom = trim($_GET['invoice_from'] ?? '');
 $filterInvoiceTo = trim($_GET['invoice_to'] ?? '');
-$where = [
-    'i.is_deleted = 0',
-    'COALESCE(i.ap_balance, 0) > 0',
-    "COALESCE(i.payment_status, '') NOT IN ('Pending Documents', 'Paid', 'Rejected', 'Cancelled')",
-];
+$isSearchActive = $filterVendor !== '' || $filterInvoiceFrom !== '' || $filterInvoiceTo !== '';
+$where = ['i.is_deleted = 0'];
+
+// The default screen is a work queue. An explicit search also returns historical
+// matches so paid invoices and invoices already converted to a PR can be found.
+if (!$isSearchActive) {
+    $where[] = 'COALESCE(i.ap_balance, 0) > 0';
+    $where[] = "COALESCE(i.payment_status, '') NOT IN ('Pending Documents', 'Paid', 'Rejected', 'Cancelled')";
+    $where[] = 'NOT EXISTS (SELECT 1 FROM payment_request_items pri2 JOIN payment_requests pr2 ON pr2.id = pri2.payment_request_id WHERE pri2.sap_invoice_id = i.id AND pr2.is_deleted = 0)';
+}
 $params = [];
 
 if ($filterVendor !== '') {
@@ -36,8 +41,14 @@ if ($filterInvoiceTo !== '') {
 $invoices = [];
 $whereSql = implode(' AND ', $where);
 $stmt = $db->prepare("
-    SELECT i.*, CAST(julianday('now') - julianday(i.ap_invoice_date) AS INTEGER) AS aging_days
+    SELECT i.*,
+           CAST(julianday('now') - julianday(i.ap_invoice_date) AS INTEGER) AS aging_days,
+           pr.id AS linked_pr_id,
+           pr.request_no AS linked_pr_no,
+           pr.status AS linked_pr_status
     FROM sap_ap_invoices i
+    LEFT JOIN payment_request_items pri ON pri.sap_invoice_id = i.id
+    LEFT JOIN payment_requests pr ON pr.id = pri.payment_request_id AND pr.is_deleted = 0
     WHERE {$whereSql}
     ORDER BY i.ap_invoice_date ASC, i.vendor_name ASC, i.ap_invoice_doc_num ASC
 ");
@@ -62,7 +73,7 @@ include ROOT_PATH . '/layouts/header.php';
       <?= t('ap.create_payment_request') ?>
     </a>
     <?php endif; ?>
-    <?php if (canAccess('import')): ?>
+    <?php if (canEdit('import')): ?>
     <a href="<?= BASE_URL ?>/modules/ap_invoices/upload.php"
        class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium border border-slate-200">
       <?= t('ap.upload_sap') ?>
@@ -108,7 +119,7 @@ include ROOT_PATH . '/layouts/header.php';
 </div>
 
 <div class="mb-3 flex items-center justify-between text-sm text-gray-600">
-  <div><?= t('ap.waiting') ?> <span class="font-semibold text-gray-800"><?= number_format(count($invoices)) ?></span></div>
+  <div><?= $isSearchActive ? 'Search result(s):' : t('ap.waiting') ?> <span class="font-semibold text-gray-800"><?= number_format(count($invoices)) ?></span></div>
   <?php if (!empty($invoices)): ?>
   <div><?= t('ap.balance_total') ?> <span class="font-semibold text-orange-600"><?= fmtMoney(array_sum(array_column($invoices, 'ap_balance'))) ?></span></div>
   <?php endif; ?>
@@ -119,86 +130,102 @@ include ROOT_PATH . '/layouts/header.php';
   <?php endif; ?>
   <div class="bg-white rounded-xl border overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="w-full table-fixed text-[11px] leading-tight">
+        <colgroup>
+          <?php if (hasRole('admin', 'maker', 'finance_manager')): ?><col style="width:3%"> <?php endif; ?>
+          <col style="width:8%"><col style="width:18%"><col style="width:9%"><col style="width:8%">
+          <col style="width:11%"><col style="width:12%"><col style="width:9%"><col style="width:7%">
+          <col style="width:9%"><col style="width:6%">
+        </colgroup>
         <thead>
-          <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide border-b">
+          <tr class="bg-gray-50 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-normal border-b">
             <?php if (hasRole('admin', 'maker', 'finance_manager')): ?>
-            <th class="px-4 py-3 text-center">
+            <th class="px-1 py-2.5 text-center">
               <input type="checkbox" id="selectAllInvoices" class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded">
             </th>
             <?php endif; ?>
-            <th class="px-4 py-3"><?= t('ap.col.batch') ?></th>
-            <th class="px-4 py-3"><?= t('label.invoice_no') ?></th>
-            <th class="px-4 py-3"><?= t('ap.col.supplier_code') ?></th>
-            <th class="px-4 py-3"><?= t('label.supplier') ?></th>
-            <th class="px-4 py-3"><?= t('ap.col.po') ?></th>
-            <th class="px-4 py-3"><?= t('ap.col.grpo') ?></th>
-            <th class="px-4 py-3"><?= t('ap.col.grpo_date') ?></th>
-            <th class="px-4 py-3 text-right"><?= t('ap.col.grpo_total') ?></th>
-            <th class="px-4 py-3"><?= t('ap.col.invoice_date') ?></th>
-            <th class="px-4 py-3 text-right"><?= t('ap.col.invoice_total') ?></th>
-            <th class="px-4 py-3 text-right"><?= t('ap.col.paid') ?></th>
-            <th class="px-4 py-3 text-right"><?= t('ap.col.balance') ?></th>
-            <th class="px-4 py-3"><?= t('ap.col.payment_doc') ?></th>
-            <th class="px-4 py-3 text-right"><?= t('ap.col.payment_total') ?></th>
-            <th class="px-4 py-3"><?= t('ap.col.aging') ?></th>
-            <th class="px-4 py-3"><?= t('label.status') ?></th>
-            <th class="px-4 py-3"></th>
+            <th class="px-2 py-2.5"><?= t('label.invoice_no') ?></th>
+            <th class="px-2 py-2.5"><?= t('label.supplier') ?></th>
+            <th class="px-2 py-2.5">PO / GRPO</th>
+            <th class="px-2 py-2.5 text-right"><?= t('ap.col.grpo_total') ?></th>
+            <th class="px-2 py-2.5 text-right"><?= t('ap.col.invoice_total') ?></th>
+            <th class="px-2 py-2.5 text-right"><?= t('ap.col.payment_total') ?></th>
+            <th class="px-2 py-2.5 text-right"><?= t('ap.col.balance') ?></th>
+            <th class="px-2 py-2.5 text-center"><?= t('ap.col.aging') ?></th>
+            <th class="px-2 py-2.5 text-center"><?= t('label.status') ?></th>
+            <th class="px-2 py-2.5"></th>
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($invoices as $inv): ?>
+          <?php foreach ($invoices as $inv):
+            $isInvoiceSelectable = (float)$inv['ap_balance'] > 0
+                && empty($inv['linked_pr_id'])
+                && !in_array((string)($inv['payment_status'] ?? ''), ['Pending Documents', 'Paid', 'Rejected', 'Cancelled'], true);
+            $displayStatus = !empty($inv['linked_pr_status']) ? (string)$inv['linked_pr_status'] : (string)($inv['payment_status'] ?? '');
+          ?>
           <tr class="border-b last:border-0 hover:bg-gray-50 <?= ($inv['aging_days'] > 90 && $inv['ap_balance'] > 0) ? 'bg-red-50' : '' ?>">
             <?php if (hasRole('admin', 'maker', 'finance_manager')): ?>
-            <td class="px-4 py-2.5 text-center">
+            <td class="px-1 py-2.5 text-center">
+              <?php if ($isInvoiceSelectable): ?>
               <input type="checkbox" name="invoice_ids[]" value="<?= $inv['id'] ?>" class="invoice-checkbox form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded">
+              <?php else: ?><span class="text-gray-300">—</span><?php endif; ?>
             </td>
             <?php endif; ?>
-            <td class="px-4 py-2.5 text-xs text-gray-500"><?= h((string)($inv['import_batch_id'] ?? '-')) ?></td>
-            <td class="px-4 py-2.5 font-mono text-xs"><?= h($inv['ap_invoice_doc_num']) ?></td>
-            <td class="px-4 py-2.5 text-xs text-gray-500"><?= h($inv['vendor_code'] ?: '-') ?></td>
-            <td class="px-4 py-2.5">
-              <div class="font-medium text-gray-800"><?= h($inv['vendor_name']) ?></div>
+            <td class="px-2 py-2.5 align-top">
+              <div class="truncate font-mono font-semibold text-gray-800" title="<?= h($inv['ap_invoice_doc_num']) ?>"><?= h($inv['ap_invoice_doc_num']) ?></div>
+              <div class="mt-1 truncate text-[10px] text-gray-400">Batch #<?= h((string)($inv['import_batch_id'] ?? '-')) ?></div>
             </td>
-            <td class="px-4 py-2.5 text-xs text-gray-500"><?= h($inv['po_doc_num'] ?: '-') ?></td>
-            <td class="px-4 py-2.5 text-xs text-gray-500"><?= h($inv['grpo_doc_num'] ?: '-') ?></td>
-            <td class="px-4 py-2.5 text-xs"><?= fmtDate($inv['grpo_date']) ?></td>
-            <td class="px-4 py-2.5 text-right text-xs"><?= fmtMoney((float)$inv['grpo_total']) ?></td>
-            <td class="px-4 py-2.5 text-xs"><?= fmtDate($inv['ap_invoice_date']) ?></td>
-            <td class="px-4 py-2.5 text-right font-medium"><?= fmtMoney($inv['ap_invoice_total']) ?></td>
-            <td class="px-4 py-2.5 text-right text-green-600"><?= fmtMoney($inv['ap_paid_amount']) ?></td>
-            <td class="px-4 py-2.5 text-right font-semibold <?= $inv['ap_balance'] > 0 ? 'text-orange-600' : 'text-gray-400' ?>"><?= fmtMoney($inv['ap_balance']) ?></td>
-            <td class="px-4 py-2.5 text-xs text-gray-500"><?= h($inv['payment_doc_num'] ?: '-') ?></td>
-            <td class="px-4 py-2.5 text-right text-xs"><?= fmtMoney((float)$inv['payment_total']) ?></td>
-            <td class="px-4 py-2.5"><?= agingLabel((int)$inv['aging_days']) ?></td>
-            <td class="px-4 py-2.5"><?= statusBadge($inv['payment_status']) ?></td>
-            <td class="px-4 py-2.5">
-              <?php if (hasRole('admin', 'maker', 'finance_manager') && $inv['ap_balance'] > 0 && !in_array((string)($inv['payment_status'] ?? ''), ['Pending Documents', 'Paid', 'Rejected', 'Cancelled'], true)): ?>
+            <td class="px-2 py-2.5 align-top">
+              <div class="truncate font-medium text-gray-800" title="<?= h($inv['vendor_name']) ?>"><?= h($inv['vendor_name']) ?></div>
+              <div class="mt-1 truncate font-mono text-[10px] text-gray-400"><?= h($inv['vendor_code'] ?: '-') ?></div>
+            </td>
+            <td class="px-2 py-2.5 align-top text-gray-600">
+              <div class="truncate" title="PO: <?= h($inv['po_doc_num'] ?: '-') ?>">PO: <?= h($inv['po_doc_num'] ?: '-') ?></div>
+              <div class="mt-1 truncate" title="GRPO: <?= h($inv['grpo_doc_num'] ?: '-') ?>">GRPO: <?= h($inv['grpo_doc_num'] ?: '-') ?></div>
+              <div class="mt-1 text-[10px] text-gray-400"><?= fmtDate($inv['grpo_date']) ?></div>
+            </td>
+            <td class="px-2 py-2.5 text-right align-top whitespace-nowrap"><?= fmtMoney((float)$inv['grpo_total']) ?></td>
+            <td class="px-2 py-2.5 text-right align-top">
+              <div class="font-semibold whitespace-nowrap"><?= fmtMoney($inv['ap_invoice_total']) ?></div>
+              <div class="mt-1 text-[10px] text-gray-400 whitespace-nowrap"><?= fmtDate($inv['ap_invoice_date']) ?></div>
+            </td>
+            <td class="px-2 py-2.5 text-right align-top">
+              <div class="truncate text-[10px] text-gray-400" title="<?= h($inv['payment_doc_num'] ?: '-') ?>"><?= h($inv['payment_doc_num'] ?: '-') ?></div>
+              <div class="mt-1 whitespace-nowrap text-green-600">Paid <?= fmtMoney($inv['ap_paid_amount']) ?></div>
+              <div class="mt-1 whitespace-nowrap text-gray-500">Total <?= fmtMoney((float)$inv['payment_total']) ?></div>
+            </td>
+            <td class="px-2 py-2.5 text-right align-top font-bold whitespace-nowrap <?= $inv['ap_balance'] > 0 ? 'text-orange-600' : 'text-gray-400' ?>"><?= fmtMoney($inv['ap_balance']) ?></td>
+            <td class="px-2 py-2.5 text-center align-top"><?= agingLabel((int)$inv['aging_days']) ?></td>
+            <td class="px-2 py-2.5 text-center align-top">
+              <?= statusBadge($displayStatus) ?>
+              <?php if (!empty($inv['linked_pr_no'])): ?><div class="mt-1 text-[10px] text-gray-400"><?= h($inv['linked_pr_no']) ?></div><?php endif; ?>
+            </td>
+            <td class="px-2 py-2.5 text-right align-top">
+              <?php if (!empty($inv['linked_pr_id'])): ?>
+              <a href="<?= BASE_URL ?>/modules/payment_requests/detail.php?id=<?= (int)$inv['linked_pr_id'] ?>"
+                 class="text-[10px] font-medium text-emerald-700 hover:underline whitespace-nowrap">Open PR</a>
+              <?php elseif (hasRole('admin', 'maker', 'finance_manager') && $isInvoiceSelectable): ?>
               <a href="<?= BASE_URL ?>/modules/payment_requests/create.php?invoice_id=<?= $inv['id'] ?>"
-                 class="text-xs text-blue-600 hover:underline whitespace-nowrap">Create PR</a>
+                 class="text-[10px] text-blue-600 hover:underline whitespace-nowrap">Create PR</a>
               <?php endif; ?>
             </td>
           </tr>
           <?php endforeach; ?>
         <?php if (empty($invoices)): ?>
         <tr>
-          <td colspan="<?= hasRole('admin', 'maker', 'finance_manager') ? 18 : 17 ?>" class="px-4 py-8 text-center text-gray-400"><?= t('ap.none') ?></td>
+          <td colspan="<?= hasRole('admin', 'maker', 'finance_manager') ? 11 : 10 ?>" class="px-4 py-8 text-center text-gray-400"><?= t('ap.none') ?></td>
         </tr>
         <?php endif; ?>
       </tbody>
       <?php if (!empty($invoices)): ?>
       <tfoot>
         <tr class="bg-gray-50 text-xs font-semibold text-gray-600 border-t">
-          <td colspan="<?= hasRole('admin', 'maker', 'finance_manager') ? 9 : 8 ?>" class="px-4 py-2"><?= t('pr.total') ?> (<?= count($invoices) ?> <?= t('label.records') ?>)</td>
-          <td class="px-4 py-2 text-right"><?= fmtMoney(array_sum(array_column($invoices, 'ap_invoice_total'))) ?></td>
-          <td class="px-4 py-2 text-right text-green-600"><?= fmtMoney(array_sum(array_column($invoices, 'ap_paid_amount'))) ?></td>
-          <td class="px-4 py-2 text-right text-orange-600"><?= fmtMoney(array_sum(array_column($invoices, 'ap_balance'))) ?></td>
-          <td></td>
-          <td class="px-4 py-2 text-right"><?= fmtMoney(array_sum(array_column($invoices, 'payment_total'))) ?></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
+          <td colspan="<?= hasRole('admin', 'maker', 'finance_manager') ? 4 : 3 ?>" class="px-2 py-2"><?= t('pr.total') ?> (<?= count($invoices) ?> <?= t('label.records') ?>)</td>
+          <td class="px-2 py-2 text-right whitespace-nowrap"><?= fmtMoney(array_sum(array_column($invoices, 'grpo_total'))) ?></td>
+          <td class="px-2 py-2 text-right whitespace-nowrap"><?= fmtMoney(array_sum(array_column($invoices, 'ap_invoice_total'))) ?></td>
+          <td class="px-2 py-2 text-right"><div class="text-green-600 whitespace-nowrap">Paid <?= fmtMoney(array_sum(array_column($invoices, 'ap_paid_amount'))) ?></div><div class="mt-1 whitespace-nowrap text-gray-500">Total <?= fmtMoney(array_sum(array_column($invoices, 'payment_total'))) ?></div></td>
+          <td class="px-2 py-2 text-right text-orange-600 whitespace-nowrap"><?= fmtMoney(array_sum(array_column($invoices, 'ap_balance'))) ?></td>
+          <td colspan="3"></td>
         </tr>
       </tfoot>
       <?php endif; ?>

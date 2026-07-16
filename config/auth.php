@@ -35,19 +35,21 @@ function isAdmin(): bool {
 }
 
 function canAccess(string $module): bool {
+    $modules = ['import', 'ap_invoices', 'payment_requests', 'approval', 'payment_batch', 'cheques', 'calendar', 'reports', 'bpmn', 'dashboard', 'settings'];
+    return isLoggedIn() && in_array($module, $modules, true);
+}
+
+/** Whether the signed-in role owns data-changing work in a module. */
+function canEdit(string $module): bool {
     $role = $_SESSION['role_name'] ?? '';
     $map = [
-        'import'          => ['admin', 'maker', 'finance_manager'],
-        'ap_invoices'     => ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
-        'payment_requests'=> ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
-        'approval'        => ['admin', 'checker', 'approver', 'finance_manager', 'executive'],
-        'payment_batch'   => ['admin', 'finance_manager'],
-        'cheques'         => ['admin', 'finance_manager'],
-        'calendar'        => ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
-        'reports'         => ['admin', 'finance_manager', 'executive'],
-        'bpmn'            => ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
-        'dashboard'       => ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
-        'settings'        => ['admin'],
+        'import'           => ['admin', 'maker', 'finance_manager'],
+        'ap_invoices'      => ['admin', 'maker', 'finance_manager'],
+        'payment_requests' => ['admin', 'maker', 'checker', 'approver', 'finance_manager', 'executive'],
+        'approval'         => ['admin', 'checker', 'approver', 'finance_manager', 'executive'],
+        'payment_batch'    => ['admin', 'finance_manager'],
+        'cheques'          => ['admin', 'finance_manager'],
+        'settings'         => ['admin'],
     ];
     return in_array($role, $map[$module] ?? [], true);
 }

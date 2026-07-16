@@ -335,6 +335,14 @@ function runMigrations(PDO $pdo): void {
     ensureColumn($pdo, 'payment_requests', 'checker_invoice_comment', "TEXT");
     ensureColumn($pdo, 'payment_requests', 'checker_gr_accepted', "INTEGER DEFAULT 0");
     ensureColumn($pdo, 'payment_requests', 'checker_gr_comment', "TEXT");
+    ensureColumn($pdo, 'finance_ap_records', 'tax_invoice_no', "TEXT");
+    ensureColumn($pdo, 'finance_ap_records', 'cheque_bank', "TEXT");
+    ensureColumn($pdo, 'finance_ap_records', 'paid_date', "TEXT");
+    ensureColumn($pdo, 'finance_ap_records', 'source_row', "INTEGER");
+    ensureColumn($pdo, 'cheques', 'source_type', "TEXT");
+    ensureColumn($pdo, 'cheques', 'source_id', "INTEGER");
+
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_cheques_source ON cheques(source_type, source_id)");
 
     $pdo->exec("
         UPDATE payment_requests

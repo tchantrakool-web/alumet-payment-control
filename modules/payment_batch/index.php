@@ -6,6 +6,11 @@ $pageTitle = 'Payment Batch';
 $db   = getDB();
 $user = currentUser();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !canEdit('payment_batch')) {
+    flash('error', 'Payment Batch is read-only for your role.');
+    redirect(BASE_URL . '/modules/payment_batch/');
+}
+
 // Handle create batch
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_batch') {
     $prIds    = $_POST['pr_ids'] ?? [];
@@ -107,8 +112,9 @@ include ROOT_PATH . '/layouts/header.php';
     <div class="bg-white rounded-xl border overflow-hidden">
       <div class="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
         <h3 class="font-semibold text-gray-700 text-sm"><?= t('batch.batches') ?></h3>
-        <button onclick="document.getElementById('createBatchModal').classList.remove('hidden')"
+        <?php if (canEdit('payment_batch')): ?><button onclick="document.getElementById('createBatchModal').classList.remove('hidden')"
                 class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700"><?= t('batch.new') ?></button>
+        <?php endif; ?>
       </div>
       <div class="divide-y max-h-96 overflow-y-auto">
         <?php foreach ($batches as $b): ?>
@@ -153,7 +159,7 @@ include ROOT_PATH . '/layouts/header.php';
         </div>
       </div>
 
-      <?php if (!$viewBatch['is_locked']): ?>
+      <?php if (!$viewBatch['is_locked'] && canEdit('payment_batch')): ?>
       <form method="POST" class="mb-4">
         <input type="hidden" name="action" value="lock_batch">
         <input type="hidden" name="batch_id" value="<?= $viewBatch['id'] ?>">

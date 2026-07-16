@@ -6,6 +6,7 @@ if (!canAccess('settings')) { flash('error', 'Access denied'); redirect(BASE_URL
 $pageTitle = 'Settings';
 $db = getDB();
 $user = currentUser();
+$canEditSettings = canEdit('settings');
 
 $generalSettingDefs = [
     'company_name' => ['label' => 'Company Name', 'description' => 'Shown in headers and exported reports.'],
@@ -16,6 +17,10 @@ $generalSettingDefs = [
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!canEdit('settings')) {
+        flash('error', 'This module is read-only for your role.');
+        redirect(BASE_URL . '/modules/settings/');
+    }
     $action = $_POST['action'] ?? '';
 
     if ($action === 'save_general') {
@@ -132,10 +137,18 @@ $recentAdmins = $db->query("
 include ROOT_PATH . '/layouts/header.php';
 ?>
 
-<div class="mb-6">
-  <h1 class="text-2xl font-bold text-gray-800"><?= t('settings.title') ?></h1>
-  <p class="mt-1 text-sm text-gray-500"><?= t('settings.subtitle') ?></p>
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-800"><?= t('settings.title') ?></h1>
+    <p class="mt-1 text-sm text-gray-500"><?= t('settings.subtitle') ?></p>
+  </div>
+  <a href="<?= BASE_URL ?>/modules/settings/users.php"
+     class="theme-btn-secondary inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-sm">
+    <span aria-hidden="true">👥</span>
+    Manage Users
+  </a>
 </div>
+<?php if (!$canEditSettings): ?><div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">View-only access: system settings can only be changed by an administrator.</div><?php endif; ?>
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
   <div class="xl:col-span-2 rounded-xl border bg-white p-5">
@@ -148,6 +161,7 @@ include ROOT_PATH . '/layouts/header.php';
 
     <form method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <input type="hidden" name="action" value="save_general">
+      <fieldset class="contents" <?= !$canEditSettings ? 'disabled' : '' ?>>
       <?php foreach ($generalSettingDefs as $key => $meta): ?>
       <div class="<?= $key === 'company_name' ? 'md:col-span-2' : '' ?>">
         <label class="mb-1 block text-sm font-medium text-gray-700"><?= h($meta['label']) ?></label>
@@ -164,6 +178,7 @@ include ROOT_PATH . '/layouts/header.php';
       <div class="md:col-span-2 flex justify-end">
         <button type="submit" class="theme-btn-primary rounded-lg px-4 py-2 text-sm font-medium"><?= t('settings.save_general') ?></button>
       </div>
+      </fieldset>
     </form>
   </div>
 
@@ -195,6 +210,7 @@ include ROOT_PATH . '/layouts/header.php';
 
     <form method="POST">
       <input type="hidden" name="action" value="save_approval_matrix">
+      <fieldset <?= !$canEditSettings ? 'disabled' : '' ?>>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -273,6 +289,7 @@ include ROOT_PATH . '/layouts/header.php';
       <div class="mt-4 flex justify-end">
         <button type="submit" class="theme-btn-secondary rounded-lg px-4 py-2 text-sm font-medium"><?= t('settings.save_matrix') ?></button>
       </div>
+      </fieldset>
     </form>
   </div>
 

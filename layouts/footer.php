@@ -1,11 +1,11 @@
-  </main>
-</div>
+</main>
 
 <script>
 // Initialize all DataTables
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.datatable').forEach(function(el) {
         $(el).DataTable({
+            searching: el.dataset.searching !== 'false',
             language: {
                 search: 'ค้นหา:',
                 lengthMenu: 'แสดง _MENU_ รายการ',

@@ -92,10 +92,45 @@ function columnIndex(string $cellRef): int {
 
 function excelDateToString(string $serial): string {
     if (!is_numeric($serial)) return $serial;
-    $unix = ($serial - 25569) * 86400;
-    return date('Y-m-d', (int)$unix);
+    $days = (int)floor((float)$serial);
+    return (new DateTimeImmutable('1899-12-30', new DateTimeZone('UTC')))
+        ->modify("+{$days} days")
+        ->format('Y-m-d');
 }
 
 function looksLikeDate(string $val): bool {
-    return is_numeric($val) && (float)$val > 40000 && (float)$val < 60000;
+    return is_numeric($val) && (float)$val > 20000 && (float)$val < 60000;
+}
+
+function normalizeSpreadsheetDate(string $value): string {
+    $value = trim($value);
+    if ($value === '' || $value === '0') return '';
+    if (looksLikeDate($value)) return excelDateToString($value);
+
+    $value = str_replace('.', '/', $value);
+    foreach (['!Y-m-d', '!d/m/y', '!d/m/Y', '!d-m-y', '!d-m-Y'] as $format) {
+        $date = DateTimeImmutable::createFromFormat($format, $value);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($date !== false && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
+            $year = (int)$date->format('Y');
+            if ($year > 2400) $date = $date->modify('-543 years');
+            // Thai source files sometimes use the last two digits of the
+            // Buddhist year (e.g. 69 for 2569 / 2026).
+            if (preg_match('/(?:^|[\/-])\d{2}$/', $value) && $year >= 2060) {
+                $date = $date->modify('-43 years');
+            }
+            return $date->format('Y-m-d');
+        }
+    }
+
+    return $value;
+}
+
+function parseSpreadsheetMoney(string $value): float {
+    $value = trim($value);
+    if ($value === '' || $value === '-') return 0.0;
+    $negative = str_starts_with($value, '(') && str_ends_with($value, ')');
+    $clean = preg_replace('/[^0-9.\-]/u', '', str_replace(',', '', $value));
+    $amount = is_numeric($clean) ? (float)$clean : 0.0;
+    return $negative ? -abs($amount) : $amount;
 }

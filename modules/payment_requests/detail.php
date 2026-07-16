@@ -729,7 +729,7 @@ include ROOT_PATH . '/layouts/header.php';
     <div class="rounded-xl border bg-white p-5">
       <div class="mb-3 flex items-center justify-between">
         <h3 class="font-semibold text-gray-700"><?= t('pr.detail.documents') ?> (<?= count($attachments) ?>)</h3>
-        <form method="POST" action="<?= BASE_URL ?>/api/attachments.php" enctype="multipart/form-data" class="flex items-center gap-2">
+        <?php if (hasRole('admin', 'maker', 'checker', 'finance_manager')): ?><form method="POST" action="<?= BASE_URL ?>/api/attachments.php" enctype="multipart/form-data" class="flex items-center gap-2">
           <input type="hidden" name="related_type" value="payment_request">
           <input type="hidden" name="related_id" value="<?= $id ?>">
           <input type="file" name="attachment" class="rounded border border-gray-300 px-2 py-1 text-xs">
@@ -742,7 +742,7 @@ include ROOT_PATH . '/layouts/header.php';
             <option value="Other">Other</option>
           </select>
           <button type="submit" class="theme-btn-primary rounded px-3 py-1 text-xs"><?= t('btn.upload') ?></button>
-        </form>
+        </form><?php endif; ?>
       </div>
       <?php if (empty($attachments)): ?>
       <p class="py-3 text-center text-sm text-gray-400"><?= t('pr.detail.no_attachment') ?></p>
