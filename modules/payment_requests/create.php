@@ -21,6 +21,10 @@ $selectionMode = !empty($entryInvoiceIds);
 $preselectedInvoices = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_request') {
+    if (!verifyCsrfToken(isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : null)) {
+        flash('error', 'Your session token expired. Please try again.');
+        redirect(BASE_URL . '/modules/payment_requests/create.php');
+    }
     $vendorId = (int)($_POST['vendor_id'] ?? 0);
     $vendorName = trim($_POST['vendor_name'] ?? '');
     $vendorCode = trim($_POST['vendor_code'] ?? '');
@@ -257,6 +261,7 @@ include ROOT_PATH . '/layouts/header.php';
     'vendor' => $invoice['vendor_name'],
     'code' => $invoice['vendor_code'] ?? '',
 ], $preselectedInvoices), JSON_UNESCAPED_UNICODE) ?>)' class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+  <?= csrfField() ?>
   <input type="hidden" name="action" value="create_payment_request">
   <div class="space-y-4 lg:col-span-2">
     <div class="rounded-xl border bg-white p-5">

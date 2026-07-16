@@ -12,6 +12,28 @@ function requireLogin(): void {
         header('Location: ' . BASE_URL . '/login.php');
         exit;
     }
+
+    // Session data is only a cache. Re-check the account so deactivation and
+    // role changes take effect immediately instead of at the next login.
+    $stmt = getDB()->prepare("
+        SELECT u.id, u.username, u.full_name, u.role_id, r.name AS role_name
+        FROM users u
+        JOIN roles r ON r.id = u.role_id
+        WHERE u.id = ? AND u.is_active = 1
+    ");
+    $stmt->execute([(int) $_SESSION['user_id']]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        logout();
+        header('Location: ' . BASE_URL . '/login.php');
+        exit;
+    }
+
+    $_SESSION['username'] = $user['username'];
+    $_SESSION['full_name'] = $user['full_name'];
+    $_SESSION['role_id'] = $user['role_id'];
+    $_SESSION['role_name'] = $user['role_name'];
 }
 
 function currentUser(): ?array {

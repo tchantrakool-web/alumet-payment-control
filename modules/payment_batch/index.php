@@ -11,6 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !canEdit('payment_batch')) {
     redirect(BASE_URL . '/modules/payment_batch/');
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verifyCsrfToken(isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : null)) {
+    flash('error', 'Your session token expired. Please try again.');
+    redirect(BASE_URL . '/modules/payment_batch/');
+}
+
 // Handle create batch
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_batch') {
     $prIds    = $_POST['pr_ids'] ?? [];
@@ -161,6 +166,7 @@ include ROOT_PATH . '/layouts/header.php';
 
       <?php if (!$viewBatch['is_locked'] && canEdit('payment_batch')): ?>
       <form method="POST" class="mb-4">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="lock_batch">
         <input type="hidden" name="batch_id" value="<?= $viewBatch['id'] ?>">
         <button class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
@@ -216,6 +222,7 @@ include ROOT_PATH . '/layouts/header.php';
       <button onclick="document.getElementById('createBatchModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
     </div>
     <form method="POST" class="p-5">
+      <?= csrfField() ?>
       <input type="hidden" name="action" value="create_batch">
       <div class="grid grid-cols-2 gap-3 mb-4">
         <div>

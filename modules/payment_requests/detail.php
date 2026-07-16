@@ -175,8 +175,7 @@ function sendCorrectionEmail(PDO $db, array $request, string $correctionDetails,
     }
 }
 
-function createApprovalTasks(PDO $db, int $paymentRequestId, float $amount): void {
-    $db->prepare("DELETE FROM approval_tasks WHERE payment_request_id = ?")->execute([$paymentRequestId]);
+function createApprovalTasks(PDO $db, int $paymentRequestId, float $amount): int {
     $matrix = $db->prepare("
         SELECT *
         FROM approval_matrix
@@ -186,24 +185,47 @@ function createApprovalTasks(PDO $db, int $paymentRequestId, float $amount): voi
         ORDER BY sequence
     ");
     $matrix->execute([$amount, $amount]);
-    foreach ($matrix->fetchAll() as $rule) {
-        $stmtUser = $db->prepare("
-            SELECT u.id
-            FROM users u
-            JOIN roles r ON r.id = u.role_id
-            WHERE r.name = ?
-              AND u.is_active = 1
-            LIMIT 1
-        ");
-        $stmtUser->execute([$rule['approver_role']]);
-        $approverId = $stmtUser->fetchColumn();
-        if ($approverId) {
-            $db->prepare("
-                INSERT INTO approval_tasks (payment_request_id, approver_id, sequence)
-                VALUES (?, ?, ?)
-            ")->execute([$paymentRequestId, $approverId, $rule['sequence']]);
-        }
+    $rules = $matrix->fetchAll();
+    if (empty($rules)) {
+        return 0;
     }
+
+    // Resolve the complete route before replacing existing tasks. A broken
+    // rule must not leave the request with a partial approval chain.
+    $tasks = [];
+    foreach ($rules as $rule) {
+        if (!empty($rule['approver_user_id'])) {
+            $stmtUser = $db->prepare("SELECT id FROM users WHERE id = ? AND is_active = 1");
+            $stmtUser->execute([(int) $rule['approver_user_id']]);
+        } else {
+            $stmtUser = $db->prepare("
+                SELECT u.id
+                FROM users u
+                JOIN roles r ON r.id = u.role_id
+                WHERE r.name = ? AND u.is_active = 1
+                ORDER BY u.id
+                LIMIT 1
+            ");
+            $stmtUser->execute([$rule['approver_role']]);
+        }
+
+        $approverId = (int) ($stmtUser->fetchColumn() ?: 0);
+        if ($approverId === 0) {
+            return 0;
+        }
+        $tasks[] = [$paymentRequestId, $approverId, (int) $rule['sequence']];
+    }
+
+    $db->prepare("DELETE FROM approval_tasks WHERE payment_request_id = ?")->execute([$paymentRequestId]);
+    $insertTask = $db->prepare("
+        INSERT INTO approval_tasks (payment_request_id, approver_id, sequence)
+        VALUES (?, ?, ?)
+    ");
+    foreach ($tasks as $task) {
+        $insertTask->execute($task);
+    }
+
+    return count($tasks);
 }
 
 $request = loadPaymentRequest($db, $id);
@@ -213,6 +235,10 @@ if (!$request) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!verifyCsrfToken(isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : null)) {
+        flash('error', 'Your session token expired. Please try again.');
+        redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
+    }
     $action = $_POST['action'] ?? '';
     $comment = trim($_POST['comment'] ?? '');
     $oldStatus = (string)$request['status'];
@@ -301,7 +327,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($activePendingApprovalTask !== null && (int)($activePendingApprovalTask['approver_id'] ?? 0) === (int)$user['id']) {
         $currentPendingApprovalTask = $activePendingApprovalTask;
     }
-    $canApproveManagementStep = isAdmin() || $currentPendingApprovalTask !== null;
+    $canApproveManagementStep = $activePendingApprovalTask !== null
+        && (isAdmin() || $currentPendingApprovalTask !== null);
 
     if ($action === 'submit_documents' && hasRole('admin', 'maker', 'finance_manager') && in_array($oldStatus, ['Pending Documents', 'Returned for Correction'], true)) {
         if (!empty($checklistErrors)) {
@@ -344,9 +371,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 flash('error', implode(', ', $checklistErrors));
                 redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
             }
+            if (createApprovalTasks($db, $id, (float)$request['net_payable']) === 0) {
+                flash('error', 'No complete approval route is configured for this amount. Please contact an administrator.');
+                redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
+            }
             $db->prepare("UPDATE payment_requests SET checked_by = ?, checked_at = datetime('now','localtime') WHERE id = ?")
                 ->execute([$user['id'], $id]);
-            createApprovalTasks($db, $id, (float)$request['net_payable']);
             $newStatus = 'Pending Management Approval';
             $statusChanged = true;
             $comment = 'Checker document review complete — all sections accepted';
@@ -376,9 +406,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('error', implode(', ', $checklistErrors));
             redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
         }
+        if (createApprovalTasks($db, $id, (float)$request['net_payable']) === 0) {
+            flash('error', 'No complete approval route is configured for this amount. Please contact an administrator.');
+            redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
+        }
         $newStatus = 'Pending Management Approval';
         $statusChanged = true;
-        createApprovalTasks($db, $id, (float)$request['net_payable']);
     } elseif ($action === 'approve' && $canApproveManagementStep && $oldStatus === 'Pending Management Approval') {
         if ($activePendingApprovalTask !== null) {
             $db->prepare("
@@ -541,7 +574,8 @@ $currentPendingApprovalTask = null;
 if ($activePendingApprovalTask !== null && (int)($activePendingApprovalTask['approver_id'] ?? 0) === (int)$user['id']) {
     $currentPendingApprovalTask = $activePendingApprovalTask;
 }
-$canApproveManagementStep = isAdmin() || $currentPendingApprovalTask !== null;
+$canApproveManagementStep = $activePendingApprovalTask !== null
+    && (isAdmin() || $currentPendingApprovalTask !== null);
 
 $today = date('Y-m-d');
 $isOverdue = $request['due_date'] && $request['due_date'] < $today && !in_array($request['status'], ['Paid', 'Rejected', 'Cancelled'], true);
@@ -620,6 +654,7 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
 
       <form method="POST" class="space-y-4">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="save_review">
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
           <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
@@ -730,6 +765,7 @@ include ROOT_PATH . '/layouts/header.php';
       <div class="mb-3 flex items-center justify-between">
         <h3 class="font-semibold text-gray-700"><?= t('pr.detail.documents') ?> (<?= count($attachments) ?>)</h3>
         <?php if (hasRole('admin', 'maker', 'checker', 'finance_manager')): ?><form method="POST" action="<?= BASE_URL ?>/api/attachments.php" enctype="multipart/form-data" class="flex items-center gap-2">
+          <?= csrfField() ?>
           <input type="hidden" name="related_type" value="payment_request">
           <input type="hidden" name="related_id" value="<?= $id ?>">
           <input type="file" name="attachment" class="rounded border border-gray-300 px-2 py-1 text-xs">
@@ -786,6 +822,7 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
 
       <form method="POST" id="checkerReviewForm" class="space-y-3">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="checker_document_review">
 
         <!-- PO Section -->
@@ -901,15 +938,18 @@ include ROOT_PATH . '/layouts/header.php';
 
       <?php if ($request['status'] === 'Pending Documents' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="submit_documents">
         <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.submit_accounting') ?></button>
       </form>
       <?php elseif ($request['status'] === 'Pending Accounting Review' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="submit_finance_review">
         <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.submit_finance') ?></button>
       </form>
       <form method="POST" class="mt-2 space-y-2">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="return">
         <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           <option value=""><?= t('pr.detail.return_to_label') ?></option>
@@ -920,6 +960,7 @@ include ROOT_PATH . '/layouts/header.php';
         <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
       </form>
       <form method="POST" class="mt-2">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="reject">
         <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
         <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
@@ -955,6 +996,7 @@ include ROOT_PATH . '/layouts/header.php';
       <details class="mt-3">
         <summary class="cursor-pointer text-xs text-red-500 hover:underline"><?= t('pr.detail.reject_option') ?></summary>
         <form method="POST" class="mt-2">
+          <?= csrfField() ?>
           <input type="hidden" name="action" value="reject">
           <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
           <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
@@ -962,11 +1004,13 @@ include ROOT_PATH . '/layouts/header.php';
       </details>
       <?php elseif ($request['status'] === 'Pending Management Approval' && $canApproveManagementStep): ?>
       <form method="POST" class="space-y-2">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="approve">
         <textarea name="comment" rows="2" placeholder="<?= t('label.comment') ?>..." class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
         <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.approve_btn') ?></button>
       </form>
       <form method="POST" class="mt-2 space-y-2">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="return">
         <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           <option value=""><?= t('pr.detail.return_to_label') ?></option>
@@ -977,6 +1021,7 @@ include ROOT_PATH . '/layouts/header.php';
         <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
       </form>
       <form method="POST" class="mt-2">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="reject">
         <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
         <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
@@ -985,11 +1030,13 @@ include ROOT_PATH . '/layouts/header.php';
       <p class="py-2 text-center text-sm text-gray-400"><?= t('pr.detail.waiting_approver') ?></p>
       <?php elseif ($request['status'] === 'Returned for Correction' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="resubmit">
         <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.resubmit_btn') ?></button>
       </form>
       <?php elseif ($request['status'] === 'Approved for Payment' && hasRole('admin', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="mark_paid">
         <input type="date" name="payment_date" value="<?= h((string)$request['payment_date']) ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
         <input type="text" name="payment_reference" value="<?= h((string)$request['payment_reference']) ?>" placeholder="<?= t('pr.detail.payment_ref') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>

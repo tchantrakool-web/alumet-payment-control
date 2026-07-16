@@ -75,10 +75,17 @@ function statusBadge(string $status): string {
         'signed'            => 'bg-purple-100 text-purple-700',
         'released'          => 'bg-teal-100 text-teal-700',
         'received'          => 'bg-emerald-100 text-emerald-700',
+        'cancelled'         => 'bg-gray-200 text-gray-600',
         'void'              => 'bg-gray-200 text-gray-600',
     ];
     $cls = $map[$status] ?? 'bg-gray-100 text-gray-600';
-    $label = htmlspecialchars($status, ENT_QUOTES, 'UTF-8');
+    $labelMap = [
+        'released' => 'Bank Transfer',
+        'received' => 'Receive by Supplier',
+        'cancelled' => 'Cancelled',
+        'void' => 'Void',
+    ];
+    $label = htmlspecialchars($labelMap[$status] ?? $status, ENT_QUOTES, 'UTF-8');
     return "<span class=\"inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {$cls}\">{$label}</span>";
 }
 
@@ -106,6 +113,22 @@ function getFlash(string $key): string {
 
 function h(string $str): string {
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
+}
+
+function csrfToken(): string {
+    if (empty($_SESSION['app_csrf_token'])) {
+        $_SESSION['app_csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return (string) $_SESSION['app_csrf_token'];
+}
+
+function csrfField(): string {
+    return '<input type="hidden" name="csrf_token" value="' . h(csrfToken()) . '">';
+}
+
+function verifyCsrfToken(?string $token): bool {
+    $expected = (string) ($_SESSION['app_csrf_token'] ?? '');
+    return $expected !== '' && $token !== null && hash_equals($expected, $token);
 }
 
 function t(string $key, string $default = ''): string {

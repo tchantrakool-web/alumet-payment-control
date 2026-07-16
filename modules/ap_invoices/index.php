@@ -50,7 +50,15 @@ $stmt = $db->prepare("
     LEFT JOIN payment_request_items pri ON pri.sap_invoice_id = i.id
     LEFT JOIN payment_requests pr ON pr.id = pri.payment_request_id AND pr.is_deleted = 0
     WHERE {$whereSql}
-    ORDER BY i.ap_invoice_date ASC, i.vendor_name ASC, i.ap_invoice_doc_num ASC
+    ORDER BY
+        CASE
+            WHEN COALESCE(i.ap_balance, 0) > 0
+             AND COALESCE(i.payment_status, '') <> 'Paid' THEN 0
+            ELSE 1
+        END ASC,
+        i.ap_invoice_date ASC,
+        i.vendor_name ASC,
+        i.ap_invoice_doc_num ASC
 ");
 $stmt->execute($params);
 $invoices = $stmt->fetchAll();

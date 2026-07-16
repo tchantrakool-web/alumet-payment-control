@@ -21,6 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'This module is read-only for your role.');
         redirect(BASE_URL . '/modules/settings/');
     }
+    if (!verifyCsrfToken(isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : null)) {
+        flash('error', 'Your session token expired. Please try again.');
+        redirect(BASE_URL . '/modules/settings/');
+    }
     $action = $_POST['action'] ?? '';
 
     if ($action === 'save_general') {
@@ -160,6 +164,7 @@ include ROOT_PATH . '/layouts/header.php';
     </div>
 
     <form method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <?= csrfField() ?>
       <input type="hidden" name="action" value="save_general">
       <fieldset class="contents" <?= !$canEditSettings ? 'disabled' : '' ?>>
       <?php foreach ($generalSettingDefs as $key => $meta): ?>
@@ -209,6 +214,7 @@ include ROOT_PATH . '/layouts/header.php';
     </div>
 
     <form method="POST">
+      <?= csrfField() ?>
       <input type="hidden" name="action" value="save_approval_matrix">
       <fieldset <?= !$canEditSettings ? 'disabled' : '' ?>>
       <div class="overflow-x-auto">

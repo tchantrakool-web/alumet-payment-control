@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../config/bootstrap.php';
 require_once ROOT_PATH . '/config/excel_reader.php';
 requireLogin();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verifyCsrfToken(isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : null)) { flash('error', 'Your session token expired. Please try again.'); redirect(BASE_URL . '/modules/import/'); }
 if (!canEdit('import')) { flash('error', 'Import Center is read-only for your role.'); redirect(BASE_URL . '/modules/import/'); }
 
 function normalizeFinanceHeader(string $value): string {

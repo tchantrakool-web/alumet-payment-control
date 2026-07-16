@@ -205,9 +205,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$cheque) { flash('error','Cheque not found'); redirect(BASE_URL . '/modules/cheques/'); }
 
         $allowedTransitions = [
-            'prepared' => ['signed', 'cancelled', 'void'],
-            'signed' => ['released', 'cancelled', 'void'],
-            'released' => ['received', 'cancelled', 'void'],
+            'prepared' => ['released', 'received', 'cancelled', 'void'],
+            'signed' => ['released', 'received', 'cancelled', 'void'],
+            'released' => ['released', 'received', 'cancelled', 'void'],
             'received' => [],
             'cancelled' => [],
             'void' => [],
@@ -216,8 +216,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('error', "Cheque status cannot change from {$cheque['status']} to {$newStatus}.");
             redirect(BASE_URL . '/modules/cheques/');
         }
-        if (!canEdit('cheques') && !($cheque['status'] === 'prepared' && $newStatus === 'signed')) {
-            flash('error', 'Your role can only move cheques from Prepared to Signed.');
+        if (!canEdit('cheques') && !($cheque['status'] === 'prepared' && $newStatus === 'released')) {
+            flash('error', 'Your role can only move cheques from Prepared to Bank Transfer.');
             redirect(BASE_URL . '/modules/cheques/?status=' . urlencode((string)$cheque['status']));
         }
 
@@ -267,24 +267,38 @@ $cheques = $db->prepare("SELECT c.*, pr.request_no, pr.vendor_name, u.full_name 
 $cheques->execute($params);
 $cheques = $cheques->fetchAll();
 
-// PRs eligible for cheque creation. A void/cancelled cheque can be replaced,
-// but a request with an active cheque must not be issued twice.
-$eligiblePRs = $db->query("
-    SELECT pr.*
+// Show cheque-related PR numbers in the dropdown, while only allowing an
+// approved request without an active cheque to be selected.
+$chequePRs = $db->query("
+    SELECT pr.*,
+           EXISTS (
+               SELECT 1
+               FROM cheques c
+               WHERE c.payment_request_id = pr.id
+                 AND c.status NOT IN ('void', 'cancelled')
+           ) AS has_active_cheque
     FROM payment_requests pr
-    WHERE pr.status = 'Approved for Payment'
-      AND pr.is_deleted = 0
+    WHERE pr.is_deleted = 0
       AND pr.payment_method = 'cheque'
-      AND NOT EXISTS (
-          SELECT 1
-          FROM cheques c
-          WHERE c.payment_request_id = pr.id
-            AND c.status NOT IN ('void', 'cancelled')
-      )
-    ORDER BY pr.due_date
+      AND pr.status NOT IN ('Paid', 'Rejected', 'Cancelled')
+    ORDER BY pr.due_date, pr.id DESC
 ")->fetchAll();
+$eligiblePRs = array_values(array_filter($chequePRs, static fn(array $pr): bool =>
+    $pr['status'] === 'Approved for Payment' && (int) $pr['has_active_cheque'] === 0
+));
+$unavailablePRs = array_values(array_filter($chequePRs, static fn(array $pr): bool =>
+    $pr['status'] !== 'Approved for Payment' || (int) $pr['has_active_cheque'] === 1
+));
 
 $chequeStatuses = ['prepared','signed','released','received','cancelled','void'];
+$chequeStatusLabels = [
+    'prepared' => 'Prepared',
+    'signed' => 'Signed (Legacy)',
+    'released' => 'Bank Transfer',
+    'received' => 'Receive by Supplier',
+    'cancelled' => 'Cancelled',
+    'void' => 'Void',
+];
 $chequeBanks = $db->query("SELECT DISTINCT bank FROM cheques WHERE TRIM(COALESCE(bank,''))<>'' ORDER BY bank")->fetchAll(PDO::FETCH_COLUMN);
 $preservedFilters = array_filter([
     'q' => $filterQuery,
@@ -344,7 +358,7 @@ include ROOT_PATH . '/layouts/header.php';
       <label class="mb-1 block text-xs font-medium text-gray-500"><?= t('label.status') ?></label>
       <select name="status" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
         <option value=""><?= t('label.all') ?></option>
-        <?php foreach ($chequeStatuses as $status): ?><option value="<?= h($status) ?>" <?= $filterStatus === $status ? 'selected' : '' ?>><?= h(ucfirst($status)) ?></option><?php endforeach; ?>
+        <?php foreach ($chequeStatuses as $status): ?><option value="<?= h($status) ?>" <?= $filterStatus === $status ? 'selected' : '' ?>><?= h($chequeStatusLabels[$status] ?? ucfirst($status)) ?></option><?php endforeach; ?>
       </select>
     </div>
     <div>
@@ -374,7 +388,7 @@ include ROOT_PATH . '/layouts/header.php';
 <div class="flex flex-wrap gap-2 mb-4">
   <a href="?<?= h(http_build_query($preservedFilters)) ?>" class="px-3 py-1.5 rounded-lg border text-sm <?= !$filterStatus ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 hover:bg-gray-50' ?>"><?= t('label.all') ?></a>
   <?php foreach ($chequeStatuses as $s): ?>
-  <a href="?<?= h(http_build_query(array_merge($preservedFilters, ['status' => $s]))) ?>" class="px-3 py-1.5 rounded-lg border text-sm <?= $filterStatus === $s ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 hover:bg-gray-50' ?>"><?= ucfirst($s) ?></a>
+  <a href="?<?= h(http_build_query(array_merge($preservedFilters, ['status' => $s]))) ?>" class="px-3 py-1.5 rounded-lg border text-sm <?= $filterStatus === $s ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 hover:bg-gray-50' ?>"><?= h($chequeStatusLabels[$s] ?? ucfirst($s)) ?></a>
   <?php endforeach; ?>
 </div>
 
@@ -424,35 +438,23 @@ include ROOT_PATH . '/layouts/header.php';
           </td>
           <td class="px-4 py-2.5 text-xs text-gray-400"><?= fmtDateTime($c['created_at']) ?></td>
           <td class="px-4 py-2.5">
-            <?php if ($c['status'] === 'prepared' && hasRole('admin', 'finance_manager', 'maker')): ?>
+            <?php if (canEdit('cheques') && !in_array($c['status'], ['received','void','cancelled'], true)): ?>
+              <button type="button"
+                      onclick="openUpdateModal(<?= (int)$c['id'] ?>, <?= h(json_encode((string)$c['cheque_no'])) ?>, '<?= h((string)$c['status']) ?>')"
+                      class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+                Update Status
+              </button>
+            <?php elseif ($c['status'] === 'prepared' && hasRole('maker')): ?>
               <form method="POST" class="min-w-28">
                 <input type="hidden" name="csrf_token" value="<?= h($chequeCsrf) ?>">
                 <input type="hidden" name="action" value="update_status">
                 <input type="hidden" name="cheque_id" value="<?= (int)$c['id'] ?>">
-                <select name="new_status" onchange="if(this.value !== 'prepared' && confirm('Move cheque <?= h((string)$c['cheque_no']) ?> to Signed?')) this.form.submit(); else this.value='prepared';"
+                <select name="new_status" onchange="if(this.value !== 'prepared' && confirm('Move cheque <?= h((string)$c['cheque_no']) ?> to Bank Transfer?')) this.form.submit(); else this.value='prepared';"
                         class="w-full rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-medium text-blue-700 outline-none focus:ring-2 focus:ring-blue-300">
                   <option value="prepared" selected>Prepared</option>
-                  <option value="signed">Signed</option>
+                  <option value="released">Bank Transfer</option>
                 </select>
               </form>
-            <?php elseif (canEdit('cheques') && !in_array($c['status'], ['received','void','cancelled'])): ?>
-              <?php $nextStage = ['signed' => 'released', 'released' => 'received'][$c['status']] ?? ''; ?>
-              <div class="flex items-center gap-2 whitespace-nowrap">
-                <?php if ($nextStage === 'released'): ?>
-                <form method="POST" onsubmit="return confirm('Move cheque <?= h((string)$c['cheque_no']) ?> to <?= h(ucfirst($nextStage)) ?>?');">
-                  <input type="hidden" name="csrf_token" value="<?= h($chequeCsrf) ?>">
-                  <input type="hidden" name="action" value="update_status">
-                  <input type="hidden" name="cheque_id" value="<?= (int)$c['id'] ?>">
-                  <input type="hidden" name="new_status" value="<?= h($nextStage) ?>">
-                  <button type="submit" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">Mark <?= h(ucfirst($nextStage)) ?></button>
-                </form>
-                <?php elseif ($nextStage === 'received'): ?>
-                <button type="button" onclick="openUpdateModal(<?= (int)$c['id'] ?>, <?= h(json_encode((string)$c['cheque_no'])) ?>, '<?= h((string)$c['status']) ?>', 'received')"
-                        class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">Mark Received</button>
-                <?php endif; ?>
-                <button type="button" onclick="openUpdateModal(<?= (int)$c['id'] ?>, <?= h(json_encode((string)$c['cheque_no'])) ?>, '<?= h((string)$c['status']) ?>', 'cancelled')"
-                        class="text-xs text-gray-500 hover:text-red-600 hover:underline">More</button>
-              </div>
             <?php else: ?><span class="text-xs text-gray-300">—</span><?php endif; ?>
           </td>
         </tr>
@@ -478,11 +480,29 @@ include ROOT_PATH . '/layouts/header.php';
       <div>
         <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.select_pr') ?></label>
         <select name="payment_request_id" id="createPaymentRequest" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
-          <option value="">-- เลือก PR --</option>
-          <?php foreach ($eligiblePRs as $pr): ?>
-          <option value="<?= $pr['id'] ?>" data-supplier="<?= h($pr['vendor_name']) ?>"><?= h($pr['request_no']) ?> — <?= h($pr['vendor_name']) ?> — ฿<?= fmtMoney($pr['net_payable']) ?></option>
-          <?php endforeach; ?>
+          <option value="">-- เลือกเลขที่ PR --</option>
+          <?php if (!empty($eligiblePRs)): ?>
+          <optgroup label="พร้อมออกเช็ค">
+            <?php foreach ($eligiblePRs as $pr): ?>
+            <option value="<?= (int) $pr['id'] ?>" data-supplier="<?= h($pr['vendor_name']) ?>"><?= h($pr['request_no']) ?> — <?= h($pr['vendor_name']) ?> — ฿<?= fmtMoney((float) $pr['net_payable']) ?></option>
+            <?php endforeach; ?>
+          </optgroup>
+          <?php endif; ?>
+          <?php if (!empty($unavailablePRs)): ?>
+          <optgroup label="PR อื่น (ยังเลือกไม่ได้)">
+            <?php foreach ($unavailablePRs as $pr):
+              $unavailableReason = (int) $pr['has_active_cheque'] === 1 ? 'ออกเช็คแล้ว' : (string) $pr['status'];
+            ?>
+            <option value="" disabled><?= h($pr['request_no']) ?> — <?= h($unavailableReason) ?></option>
+            <?php endforeach; ?>
+          </optgroup>
+          <?php endif; ?>
         </select>
+        <p class="mt-1 text-xs <?= empty($eligiblePRs) ? 'text-amber-600' : 'text-gray-400' ?>">
+          <?= empty($eligiblePRs)
+            ? 'ขณะนี้ไม่มี PR ที่พร้อมออกเช็ค: PR ต้องมีสถานะ Approved for Payment และยังไม่มีเช็คที่ใช้งานอยู่'
+            : 'เลือกได้เฉพาะ PR สถานะ Approved for Payment ที่ยังไม่เคยออกเช็ค' ?>
+        </p>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
@@ -573,9 +593,9 @@ createPaymentRequest.addEventListener('change', syncPayeeWithSupplier);
 syncPayeeWithSupplier();
 
 const chequeTransitions = {
-    prepared: ['signed', 'cancelled', 'void'],
-    signed: ['released', 'cancelled', 'void'],
-    released: ['received', 'cancelled', 'void']
+    prepared: ['released', 'received', 'cancelled', 'void'],
+    signed: ['released', 'received', 'cancelled', 'void'],
+    released: ['released', 'received', 'cancelled', 'void']
 };
 
 function syncUpdateFields() {
@@ -596,7 +616,12 @@ function openUpdateModal(id, no, currentStatus, preferredStatus = '') {
     document.getElementById('updateChequeId').value = id;
     document.getElementById('updateChequeNo').textContent = no;
     const statusSelect = document.getElementById('updateNewStatus');
-    const labels = {signed: 'Signed', released: 'Released', received: 'Received by Supplier', cancelled: 'Cancelled', void: 'Void'};
+    const labels = {
+        released: 'Bank Transfer',
+        received: 'Receive by Supplier',
+        cancelled: 'Cancelled',
+        void: 'Void'
+    };
     statusSelect.innerHTML = '';
     (chequeTransitions[currentStatus] || []).forEach(status => {
         const option = document.createElement('option');

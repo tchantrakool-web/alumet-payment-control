@@ -7,6 +7,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect(BASE_URL . '/dashboard.php');
 }
 
+if (!verifyCsrfToken(isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : null)) {
+    flash('error', 'Your session token expired. Please try again.');
+    redirect(BASE_URL . '/dashboard.php');
+}
+
 $relatedType = trim($_POST['related_type'] ?? '');
 $relatedId   = (int)($_POST['related_id'] ?? 0);
 $docType     = trim($_POST['doc_type'] ?? 'Other');

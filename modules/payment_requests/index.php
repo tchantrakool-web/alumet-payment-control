@@ -5,12 +5,29 @@ if (!canAccess('payment_requests')) { flash('error','Access denied'); redirect(B
 $pageTitle = 'Payment Requests';
 $db = getDB();
 
+$tab = trim((string) ($_GET['tab'] ?? 'pending'));
+if (!in_array($tab, ['pending', 'history'], true)) {
+    $tab = 'pending';
+}
+$historyStatuses = ['Paid', 'Rejected', 'Cancelled'];
 $filterStatus = trim($_GET['status'] ?? '');
 $filterVendor = trim($_GET['vendor'] ?? '');
+$tabWasSpecified = isset($_GET['tab']);
+if (!$tabWasSpecified && in_array($filterStatus, $historyStatuses, true)) {
+    $tab = 'history';
+}
+if ($filterStatus !== '' && (($tab === 'history') !== in_array($filterStatus, $historyStatuses, true))) {
+    $filterStatus = '';
+}
 $today = date('Y-m-d');
 
 $where  = ['pr.is_deleted = 0'];
 $params = [];
+if ($tab === 'history') {
+    $where[] = "pr.status IN ('Paid','Rejected','Cancelled')";
+} else {
+    $where[] = "pr.status NOT IN ('Paid','Rejected','Cancelled')";
+}
 if ($filterStatus) { $where[] = 'pr.status = ?'; $params[] = $filterStatus; }
 if ($filterVendor) { $where[] = '(pr.vendor_name LIKE ? OR pr.vendor_code LIKE ?)'; $params[] = "%$filterVendor%"; $params[] = "%$filterVendor%"; }
 
@@ -20,6 +37,7 @@ if (hasRole('maker')) {
 }
 
 $whereStr = implode(' AND ', $where);
+$orderBy = $tab === 'history' ? 'pr.updated_at DESC, pr.id DESC' : 'pr.due_date ASC, pr.id DESC';
 $requests = $db->prepare("
     SELECT pr.*, u.full_name as creator_name,
            COUNT(i.id) as invoice_count,
@@ -34,13 +52,35 @@ $requests = $db->prepare("
     LEFT JOIN payment_request_items i ON i.payment_request_id = pr.id
     WHERE $whereStr
     GROUP BY pr.id
-    ORDER BY pr.due_date ASC, pr.id DESC
+    ORDER BY $orderBy
 ");
 $params2 = array_merge([$today], $params);
 $requests->execute($params2);
 $requests = $requests->fetchAll();
 
-$statuses = $db->query("SELECT DISTINCT status FROM payment_requests WHERE is_deleted=0 ORDER BY status")->fetchAll(PDO::FETCH_COLUMN);
+$scopeWhere = ['pr.is_deleted = 0'];
+$scopeParams = [];
+if (hasRole('maker')) {
+    $scopeWhere[] = 'pr.created_by = ?';
+    $scopeParams[] = currentUser()['id'];
+}
+$scopeWhereStr = implode(' AND ', $scopeWhere);
+$countStmt = $db->prepare("
+    SELECT
+        SUM(CASE WHEN pr.status NOT IN ('Paid','Rejected','Cancelled') THEN 1 ELSE 0 END) AS pending_count,
+        SUM(CASE WHEN pr.status IN ('Paid','Rejected','Cancelled') THEN 1 ELSE 0 END) AS history_count
+    FROM payment_requests pr
+    WHERE $scopeWhereStr
+");
+$countStmt->execute($scopeParams);
+$tabCounts = $countStmt->fetch() ?: ['pending_count' => 0, 'history_count' => 0];
+
+$statusScope = $tab === 'history'
+    ? "pr.status IN ('Paid','Rejected','Cancelled')"
+    : "pr.status NOT IN ('Paid','Rejected','Cancelled')";
+$statusStmt = $db->prepare("SELECT DISTINCT pr.status FROM payment_requests pr WHERE $scopeWhereStr AND $statusScope ORDER BY pr.status");
+$statusStmt->execute($scopeParams);
+$statuses = $statusStmt->fetchAll(PDO::FETCH_COLUMN);
 
 include ROOT_PATH . '/layouts/header.php';
 ?>
@@ -58,18 +98,39 @@ include ROOT_PATH . '/layouts/header.php';
   <?php endif; ?>
 </div>
 
+<div class="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Payment Request modules">
+  <a href="?tab=pending"
+     class="rounded-lg px-4 py-2 text-sm font-medium <?= $tab === 'pending' ? 'bg-blue-600 text-white' : 'border bg-white text-gray-600 hover:bg-gray-50' ?>"
+     <?= $tab === 'pending' ? 'aria-current="page"' : '' ?>>
+    <?= t('pr.pending') ?> (<?= number_format((int) ($tabCounts['pending_count'] ?? 0)) ?>)
+  </a>
+  <a href="?tab=history"
+     class="rounded-lg px-4 py-2 text-sm font-medium <?= $tab === 'history' ? 'bg-blue-600 text-white' : 'border bg-white text-gray-600 hover:bg-gray-50' ?>"
+     <?= $tab === 'history' ? 'aria-current="page"' : '' ?>>
+    <?= t('pr.history') ?> (<?= number_format((int) ($tabCounts['history_count'] ?? 0)) ?>)
+  </a>
+</div>
 
 <div class="bg-white rounded-xl border p-4 mb-4">
   <form class="flex flex-wrap gap-3 items-end">
+    <input type="hidden" name="tab" value="<?= h($tab) ?>">
     <div>
       <label class="block text-xs text-gray-500 mb-1"><?= t('label.vendor') ?></label>
       <input type="text" name="vendor" value="<?= h($filterVendor) ?>"
              class="theme-input border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-48"
              placeholder="Search vendor...">
     </div>
-    <?php if ($filterStatus): ?><input type="hidden" name="status" value="<?= h($filterStatus) ?>"><?php endif; ?>
+    <div>
+      <label class="block text-xs text-gray-500 mb-1"><?= t('label.status') ?></label>
+      <select name="status" class="theme-input border border-gray-300 rounded-lg px-3 py-1.5 text-sm min-w-48">
+        <option value=""><?= t('label.all_status') ?></option>
+        <?php foreach ($statuses as $status): ?>
+        <option value="<?= h($status) ?>" <?= $filterStatus === $status ? 'selected' : '' ?>><?= h($status) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
     <button type="submit" class="theme-btn-primary px-4 py-1.5 rounded-lg text-sm"><?= t('btn.filter') ?></button>
-    <a href="?" class="text-sm text-gray-500 hover:text-gray-700 py-1.5"><?= t('btn.reset') ?></a>
+    <a href="?tab=<?= h($tab) ?>" class="text-sm text-gray-500 hover:text-gray-700 py-1.5"><?= t('btn.reset') ?></a>
   </form>
 </div>
 
@@ -127,7 +188,7 @@ include ROOT_PATH . '/layouts/header.php';
         </tr>
         <?php endforeach; ?>
         <?php if (empty($requests)): ?>
-        <tr><td colspan="11" class="px-4 py-8 text-center text-gray-400"><?= t('pr.none') ?></td></tr>
+        <tr><td colspan="11" class="px-4 py-8 text-center text-gray-400"><?= $tab === 'history' ? t('pr.none_history') : t('pr.none_pending') ?></td></tr>
         <?php endif; ?>
       </tbody>
       <?php if (!empty($requests)): ?>

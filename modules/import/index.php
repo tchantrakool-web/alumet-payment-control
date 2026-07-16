@@ -35,6 +35,7 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
     </div>
     <?php if (canEdit('import')): ?><form method="POST" action="<?= BASE_URL ?>/modules/import/upload_sap.php" enctype="multipart/form-data">
+      <?= csrfField() ?>
       <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mb-3 hover:border-blue-400 transition-colors">
         <input type="file" name="excel_file" id="sapFile" accept=".xlsx,.xls,.csv" class="hidden"
                onchange="document.getElementById('sapName').textContent = this.files[0]?.name || '<?= t('import.sap.click') ?>'">
@@ -60,6 +61,7 @@ include ROOT_PATH . '/layouts/header.php';
       </div>
     </div>
     <?php if (canEdit('import')): ?><form method="POST" action="<?= BASE_URL ?>/modules/import/upload_finance.php" enctype="multipart/form-data">
+      <?= csrfField() ?>
       <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mb-3 hover:border-green-400 transition-colors">
         <input type="file" name="excel_file" id="finFile" accept=".xlsx,.csv" class="hidden"
                onchange="document.getElementById('finName').textContent = this.files[0]?.name || '<?= t('import.finance.click') ?>'">

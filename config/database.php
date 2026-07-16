@@ -344,6 +344,14 @@ function runMigrations(PDO $pdo): void {
 
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_cheques_source ON cheques(source_type, source_id)");
 
+    // The original seeded tiers used whole-baht starts (100001, 500001,
+    // 2000001), leaving cent-valued payments between tiers with no approver.
+    // Limit this correction to the exact original seeded boundaries so custom
+    // approval matrices are not rewritten.
+    $pdo->exec("UPDATE approval_matrix SET min_amount = 100000.01 WHERE min_amount = 100001 AND max_amount = 500000");
+    $pdo->exec("UPDATE approval_matrix SET min_amount = 500000.01 WHERE min_amount = 500001 AND max_amount = 2000000");
+    $pdo->exec("UPDATE approval_matrix SET min_amount = 2000000.01 WHERE min_amount = 2000001 AND max_amount IS NULL");
+
     $pdo->exec("
         UPDATE payment_requests
         SET gross_amount = CASE
@@ -396,11 +404,11 @@ function seedDefaultData(PDO $pdo): void {
 
     $pdo->exec("INSERT INTO approval_matrix (min_amount, max_amount, approver_role, sequence) VALUES
         (0, 100000, 'finance_manager', 1),
-        (100001, 500000, 'finance_manager', 1),
-        (100001, 500000, 'approver', 2),
-        (500001, 2000000, 'approver', 1),
-        (500001, 2000000, 'executive', 2),
-        (2000001, NULL, 'executive', 1)
+        (100000.01, 500000, 'finance_manager', 1),
+        (100000.01, 500000, 'approver', 2),
+        (500000.01, 2000000, 'approver', 1),
+        (500000.01, 2000000, 'executive', 2),
+        (2000000.01, NULL, 'executive', 1)
     ");
 
     $settings = [

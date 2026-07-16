@@ -143,7 +143,7 @@ include ROOT_PATH . '/layouts/header.php';
     <p class="mt-1 text-base text-gray-500"><?= t('dashboard.subtitle') ?></p>
   </div>
   <div class="flex flex-wrap gap-3">
-    <a href="<?= BASE_URL ?>/modules/payment_requests/?status=Paid" class="rounded-xl bg-[#003B5C] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0a4f78]">
+    <a href="<?= BASE_URL ?>/modules/payment_requests/?tab=history&amp;status=Paid" class="rounded-xl bg-[#003B5C] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0a4f78]">
       <?= t('dashboard.view_paid') ?>
     </a>
     <a href="<?= BASE_URL ?>/modules/payment_requests/" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
@@ -270,7 +270,7 @@ include ROOT_PATH . '/layouts/header.php';
         <h2 class="text-lg font-bold text-gray-800"><?= t('dashboard.history') ?></h2>
         <p class="mt-1 text-sm text-gray-500"><?= t('dashboard.history.desc') ?></p>
       </div>
-      <a href="<?= BASE_URL ?>/modules/payment_requests/?status=Paid" class="text-sm font-semibold hover:underline" style="color:#003B5C;"><?= t('dashboard.history.view') ?></a>
+      <a href="<?= BASE_URL ?>/modules/payment_requests/?tab=history&amp;status=Paid" class="text-sm font-semibold hover:underline" style="color:#003B5C;"><?= t('dashboard.history.view') ?></a>
     </div>
     <div class="mt-4 flex flex-wrap gap-2">
       <?php foreach ($archiveLabels as $label): ?>
