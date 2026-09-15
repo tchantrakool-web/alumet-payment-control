@@ -1,3 +1,6 @@
+# Local environment config — never commit real credentials
+.env
+
 # Runtime database (SQLite) and backups
 db/*.sqlite
 db/*.sqlite-wal

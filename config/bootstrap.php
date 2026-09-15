@@ -1,6 +1,9 @@
 <?php
 define('ROOT_PATH', dirname(__DIR__));
 
+require_once ROOT_PATH . '/config/env.php';
+loadEnv(ROOT_PATH . '/.env');
+
 // Build the URL from the actual project path relative to the web document root.
 // This works at the domain root, in a subdirectory, and after renaming the folder.
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
