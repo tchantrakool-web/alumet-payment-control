@@ -178,12 +178,15 @@ include ROOT_PATH . '/layouts/header.php';
             <?= fmtDate($pr['due_date']) ?>
             <?= $pr['is_overdue'] ? '<span class="text-xs ml-1">' . t('pr.overdue') . '</span>' : '' ?>
           </td>
-          <td class="px-4 py-2.5 text-xs text-gray-500 capitalize"><?= h($pr['payment_method']) ?></td>
+          <td class="px-4 py-2.5 text-xs text-gray-500 capitalize"><?= h((string)($pr['payment_method'] ?: '-')) ?></td>
           <td class="px-4 py-2.5"><?= statusBadge($pr['status']) ?></td>
           <td class="px-4 py-2.5 text-xs text-gray-500"><?= h($pr['creator_name'] ?? '') ?></td>
           <td class="px-4 py-2.5 text-xs text-gray-400"><?= fmtDate($pr['created_at']) ?></td>
-          <td class="px-4 py-2.5">
+          <td class="px-4 py-2.5 whitespace-nowrap">
             <a href="<?= BASE_URL ?>/modules/payment_requests/detail.php?id=<?= $pr['id'] ?>" class="text-xs hover:underline" style="color:#003B5C;">View</a>
+            <?php if (hasRole('admin', 'maker', 'finance_manager') && !in_array($pr['status'], ['Paid', 'Rejected', 'Cancelled'], true)): ?>
+            <a href="<?= BASE_URL ?>/modules/payment_requests/detail.php?id=<?= $pr['id'] ?>&edit=1" class="ml-2 text-xs hover:underline" style="color:#003B5C;">Edit</a>
+            <?php endif; ?>
           </td>
         </tr>
         <?php endforeach; ?>

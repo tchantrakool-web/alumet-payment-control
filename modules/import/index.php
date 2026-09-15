@@ -37,7 +37,7 @@ include ROOT_PATH . '/layouts/header.php';
     <?php if (canEdit('import')): ?><form method="POST" action="<?= BASE_URL ?>/modules/import/upload_sap.php" enctype="multipart/form-data">
       <?= csrfField() ?>
       <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mb-3 hover:border-blue-400 transition-colors">
-        <input type="file" name="excel_file" id="sapFile" accept=".xlsx,.xls,.csv" class="hidden"
+        <input type="file" name="excel_file" id="sapFile" accept=".xlsx,.csv" class="hidden"
                onchange="document.getElementById('sapName').textContent = this.files[0]?.name || '<?= t('import.sap.click') ?>'">
         <label for="sapFile" class="cursor-pointer">
           <div class="text-2xl mb-1">📁</div>

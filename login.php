@@ -33,7 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/theme.css">
 </head>
 <body class="min-h-screen flex items-center justify-center px-4" style="font-family:'Sarabun','Segoe UI',system-ui,sans-serif;background:radial-gradient(circle at top left, rgba(164,214,94,.22), transparent 24%), linear-gradient(135deg, #003B5C 0%, #005432 100%);">
 <div class="w-full max-w-md">

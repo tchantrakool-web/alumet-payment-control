@@ -1,0 +1,22 @@
+# Runtime database (SQLite) and backups
+db/*.sqlite
+db/*.sqlite-wal
+db/*.sqlite-shm
+db/*.sqlite-journal
+db/*_before_*.sqlite
+
+# User-uploaded / imported files
+uploads/attachments/
+uploads/imports/
+PO data/
+finance-data/
+
+# Ad-hoc debug artifacts
+.tmp_finance_debug/
+tmp_finance_debug.ps1
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

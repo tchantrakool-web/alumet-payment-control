@@ -248,6 +248,7 @@ include ROOT_PATH . '/layouts/header.php';
   <?php endif; ?>
 </div>
 
+<?php if (!hasRole('executive')): ?>
 <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
   <div class="rounded-2xl border bg-white p-5 shadow-sm">
     <div class="flex items-center justify-between gap-3">
@@ -280,8 +281,8 @@ include ROOT_PATH . '/layouts/header.php';
     <p class="mt-4 text-sm text-gray-500">Typical questions this archive should answer: when payment was made, who approved it, whether proof of payment exists, and why payment was delayed.</p>
   </div>
 </div>
+<?php endif; ?>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 (function () {
   const labels  = ['≤ 30 Days', '31–90 Days', '91–120 Days', '120+ Days'];

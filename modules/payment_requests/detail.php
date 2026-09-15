@@ -249,7 +249,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $whtApplicable = !empty($_POST['wht_applicable']) ? 1 : 0;
         $whtRate = max(0, (float)($_POST['wht_rate'] ?? 0));
         $whtBaseAmount = max(0, (float)($_POST['wht_base_amount'] ?? 0));
-        $whtAmount = max(0, (float)($_POST['wht_amount'] ?? 0));
         $grossAmount = max(0, (float)($_POST['gross_amount'] ?? 0));
         $taxInvoiceRequired = !empty($_POST['tax_invoice_required']) ? 1 : 0;
         $hasPo = !empty($_POST['has_po']) ? 1 : 0;
@@ -258,13 +257,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hasTaxInvoice = !empty($_POST['has_tax_invoice']) ? 1 : 0;
         $note = trim($_POST['note'] ?? (string)$request['note']);
 
-        if ($whtApplicable && $whtAmount <= 0 && $whtRate > 0 && $whtBaseAmount > 0) {
-            $whtAmount = round(($whtBaseAmount * $whtRate) / 100, 2);
+        if ($whtApplicable && !in_array($whtRate, [1.0, 3.0, 5.0], true)) {
+            flash('error', 'Please select a valid WHT rate (1%, 3%, or 5%)');
+            redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
         }
+
+        $whtAmount = $whtApplicable ? round(($whtBaseAmount * $whtRate) / 100, 2) : 0.0;
         if (!$whtApplicable) {
             $whtRate = 0;
             $whtBaseAmount = 0;
             $whtAmount = 0;
+        }
+        if ($whtApplicable && $whtAmount <= 0) {
+            flash('error', 'Please provide WHT rate or WHT amount');
+            redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
         }
 
         $netPayable = round($grossAmount - $whtAmount, 2);
@@ -352,19 +358,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $grAccepted      = !empty($_POST['gr_accepted'])      ? 1 : 0;
         $grComment       = trim($_POST['gr_comment']      ?? '');
         $reviewDecision  = trim($_POST['review_decision'] ?? 'save_only');
+        $paymentMethod   = trim($_POST['payment_method'] ?? '');
+        if (!in_array($paymentMethod, ['cheque', 'transfer', 'cash'], true)) {
+            $paymentMethod = '';
+        }
 
         $db->prepare("
             UPDATE payment_requests
             SET checker_po_accepted = ?, checker_po_comment = ?,
                 checker_invoice_accepted = ?, checker_invoice_comment = ?,
                 checker_gr_accepted = ?, checker_gr_comment = ?,
+                payment_method = CASE WHEN ? <> '' THEN ? ELSE payment_method END,
                 updated_at = datetime('now','localtime')
             WHERE id = ?
-        ")->execute([$poAccepted, $poComment, $invoiceAccepted, $invoiceComment, $grAccepted, $grComment, $id]);
+        ")->execute([$poAccepted, $poComment, $invoiceAccepted, $invoiceComment, $grAccepted, $grComment, $paymentMethod, $paymentMethod, $id]);
 
         if ($reviewDecision === 'document_complete') {
             if (!$poAccepted || !$invoiceAccepted || !$grAccepted) {
                 flash('error', 'ต้อง Accept เอกสารครบทั้ง 3 ส่วนก่อนกด Document Complete');
+                redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
+            }
+            if ($paymentMethod === '' && trim((string)($request['payment_method'] ?? '')) === '') {
+                flash('error', 'กรุณาระบุ Payment Method ก่อนกด Document Complete');
                 redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
             }
             if (!empty($checklistErrors)) {
@@ -601,7 +616,7 @@ include ROOT_PATH . '/layouts/header.php';
             <span class="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700"><?= t('pr.overdue') ?></span>
             <?php endif; ?>
             <?php if ($request['priority'] === 'urgent'): ?>
-            <span class="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700"><?= t('pr.detail.urgent') ?></span>
+            <span class="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700" title="<?= h((string)($request['priority_reason'] ?? '')) ?>"><?= t('pr.detail.urgent') ?></span>
             <?php endif; ?>
           </div>
           <p class="mt-0.5 text-sm text-gray-600"><?= h($request['vendor_name']) ?> <?= $request['vendor_code'] ? '(' . h($request['vendor_code']) . ')' : '' ?></p>
@@ -618,7 +633,7 @@ include ROOT_PATH . '/layouts/header.php';
         <div><p class="text-xs text-gray-500"><?= t('label.outstanding') ?></p><p class="font-medium <?= $outstandingBalance > 0 ? 'text-orange-600' : 'text-gray-400' ?>">THB <?= fmtMoney($outstandingBalance) ?></p></div>
         <div><p class="text-xs text-gray-500"><?= t('pr.col.invoice_ref') ?></p><p class="font-medium text-xs"><?= h(!empty($invoiceRefs) ? implode(', ', $invoiceRefs) : '-') ?></p></div>
         <div><p class="text-xs text-gray-500"><?= t('label.due_date') ?></p><p class="font-medium <?= $isOverdue ? 'text-red-600' : '' ?>"><?= fmtDate($request['due_date']) ?></p></div>
-        <div><p class="text-xs text-gray-500"><?= t('label.payment_method') ?></p><p class="font-medium capitalize"><?= h($request['payment_method']) ?></p></div>
+        <div><p class="text-xs text-gray-500"><?= t('label.payment_method') ?></p><p class="font-medium capitalize"><?= h((string)($request['payment_method'] ?: '-')) ?></p></div>
         <div><p class="text-xs text-gray-500"><?= t('label.created_by') ?></p><p class="font-medium"><?= h($request['creator_name'] ?? '') ?></p></div>
         <div><p class="text-xs text-gray-500"><?= t('pr.detail.created_at') ?></p><p class="font-medium"><?= fmtDateTime($request['created_at']) ?></p></div>
         <?php if ($request['checked_by']): ?>
@@ -643,90 +658,67 @@ include ROOT_PATH . '/layouts/header.php';
       <?php endif; ?>
     </div>
 
-    <div class="rounded-xl border bg-white p-5">
-      <div class="mb-3 flex items-center justify-between">
-        <h3 class="font-semibold text-gray-700"><?= t('pr.detail.checklist') ?></h3>
-        <?php if (!empty($checklistErrors)): ?>
-        <span class="rounded bg-amber-100 px-2 py-1 text-xs text-amber-700"><?= count($checklistErrors) ?> <?= t('pr.detail.items_pending') ?></span>
-        <?php else: ?>
-        <span class="rounded bg-emerald-100 px-2 py-1 text-xs text-emerald-700"><?= t('pr.detail.ready') ?></span>
+    <?php $canEditReview = hasRole('admin', 'maker', 'finance_manager') && !in_array($request['status'], ['Paid', 'Rejected', 'Cancelled'], true); ?>
+    <div x-data="{ showForm: <?= ($canEditReview && isset($_GET['edit'])) ? 'true' : 'false' ?> }">
+      <div class="rounded-xl border bg-white p-5">
+        <div class="mb-3 flex items-center justify-between">
+          <h3 class="font-semibold text-gray-700"><?= t('pr.detail.checklist') ?></h3>
+          <div class="flex items-center gap-2">
+            <?php if (!empty($checklistErrors)): ?>
+            <span class="rounded bg-amber-100 px-2 py-1 text-xs text-amber-700"><?= count($checklistErrors) ?> <?= t('pr.detail.items_pending') ?></span>
+            <?php else: ?>
+            <span class="rounded bg-emerald-100 px-2 py-1 text-xs text-emerald-700"><?= t('pr.detail.ready') ?></span>
+            <?php endif; ?>
+            <?php if ($canEditReview): ?>
+            <button type="button" @click="showForm = true" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"><?= t('btn.edit', 'Edit') ?></button>
+            <?php endif; ?>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <?php
+          $checklistLabels = [
+              'po' => t('pr.detail.po_confirmed'),
+              'grn' => t('pr.detail.grn_confirmed'),
+              'invoice' => t('pr.detail.invoice_confirmed'),
+              'tax_invoice' => t('pr.detail.tax_confirmed'),
+          ];
+          foreach ($checklistLabels as $key => $label): ?>
+          <div class="flex items-center gap-2 rounded-lg border p-3 text-sm <?= $checklist[$key] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'text-gray-500' ?>">
+            <span><?= $checklist[$key] ? '✓' : '—' ?></span> <?= $label ?>
+          </div>
+          <?php endforeach; ?>
+        </div>
+
+        <div class="mt-3 grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+          <div><p class="text-xs text-gray-500"><?= t('label.gross_amount') ?></p><p class="font-medium">THB <?= fmtMoney((float)($request['gross_amount'] ?? $request['total_amount'])) ?></p></div>
+          <div><p class="text-xs text-gray-500"><?= t('pr.detail.wht_applicable') ?></p><p class="font-medium"><?= (int)$request['wht_applicable'] === 1 ? t('label.yes', 'Yes') : t('label.no', 'No') ?></p></div>
+          <div><p class="text-xs text-gray-500"><?= t('label.wht_rate') ?></p><p class="font-medium"><?= (float)$request['wht_rate'] > 0 ? rtrim(rtrim(number_format((float)$request['wht_rate'], 2), '0'), '.') . '%' : '-' ?></p></div>
+          <div><p class="text-xs text-gray-500"><?= t('label.wht_base') ?></p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_base_amount']) ?></p></div>
+          <div><p class="text-xs text-gray-500"><?= t('label.wht_amount') ?></p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_amount']) ?></p></div>
+          <div><p class="text-xs text-gray-500"><?= t('label.net_payable') ?></p><p class="font-medium text-emerald-700">THB <?= fmtMoney((float)$request['net_payable']) ?></p></div>
+          <div><p class="text-xs text-gray-500"><?= t('pr.detail.tax_req_checkbox') ?></p><p class="font-medium"><?= (int)$request['tax_invoice_required'] === 1 ? t('label.yes', 'Yes') : t('label.no', 'No') ?></p></div>
+        </div>
+
+        <?php if ((string)$request['note'] !== ''): ?>
+        <div class="mt-3">
+          <p class="text-xs text-gray-500"><?= t('pr.detail.note_label') ?></p>
+          <p class="mt-0.5 text-sm text-gray-700"><?= h((string)$request['note']) ?></p>
+        </div>
         <?php endif; ?>
-      </div>
-
-      <form method="POST" class="space-y-4">
-        <?= csrfField() ?>
-        <input type="hidden" name="action" value="save_review">
-        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
-            <input type="checkbox" name="has_po" value="1" <?= $checklist['po'] ? 'checked' : '' ?>>
-            <?= t('pr.detail.po_confirmed') ?>
-          </label>
-          <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
-            <input type="checkbox" name="has_grn" value="1" <?= $checklist['grn'] ? 'checked' : '' ?>>
-            <?= t('pr.detail.grn_confirmed') ?>
-          </label>
-          <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
-            <input type="checkbox" name="has_invoice" value="1" <?= $checklist['invoice'] ? 'checked' : '' ?>>
-            <?= t('pr.detail.invoice_confirmed') ?>
-          </label>
-          <label class="flex items-center gap-2 rounded-lg border p-3 text-sm">
-            <input type="checkbox" name="has_tax_invoice" value="1" <?= $checklist['tax_invoice'] ? 'checked' : '' ?>>
-            <?= t('pr.detail.tax_confirmed') ?>
-          </label>
-        </div>
-
-        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
-            <label class="mb-1 block text-xs text-gray-500"><?= t('label.gross_amount') ?></label>
-            <input type="number" step="0.01" min="0" name="gross_amount" value="<?= h((string)($request['gross_amount'] ?? $request['total_amount'])) ?>"
-                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          </div>
-          <div class="rounded-lg border p-3">
-            <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <input type="checkbox" name="wht_applicable" value="1" <?= (int)$request['wht_applicable'] === 1 ? 'checked' : '' ?>>
-              <?= t('pr.detail.wht_applicable') ?>
-            </label>
-            <label class="mt-2 flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" name="tax_invoice_required" value="1" <?= (int)$request['tax_invoice_required'] === 1 ? 'checked' : '' ?>>
-              <?= t('pr.detail.tax_req_checkbox') ?>
-            </label>
-          </div>
-          <div>
-            <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_rate') ?></label>
-            <input type="number" step="0.01" min="0" name="wht_rate" value="<?= h((string)$request['wht_rate']) ?>"
-                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_base') ?></label>
-            <input type="number" step="0.01" min="0" name="wht_base_amount" value="<?= h((string)$request['wht_base_amount']) ?>"
-                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_amount') ?></label>
-            <input type="number" step="0.01" min="0" name="wht_amount" value="<?= h((string)$request['wht_amount']) ?>"
-                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label class="mb-1 block text-xs text-gray-500"><?= t('label.net_payable') ?></label>
-            <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-              THB <?= fmtMoney((float)$request['net_payable']) ?>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label class="mb-1 block text-xs text-gray-500"><?= t('pr.detail.note_label') ?></label>
-          <textarea name="note" rows="3" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"><?= h((string)$request['note']) ?></textarea>
-        </div>
 
         <?php if (!empty($checklistErrors)): ?>
-        <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           <?= h(implode(' | ', $checklistErrors)) ?>
         </div>
         <?php endif; ?>
+      </div>
 
-        <button class="theme-btn-secondary rounded-lg px-4 py-2 text-sm font-medium"><?= t('pr.detail.save_review') ?></button>
-      </form>
+      <?php if ($canEditReview):
+        dialogOpen('showForm', t('pr.detail.save_review'), 'max-w-3xl');
+        include __DIR__ . '/_review_form.php';
+        dialogClose();
+      endif; ?>
     </div>
 
     <div class="rounded-xl border bg-white p-5">
@@ -906,6 +898,17 @@ include ROOT_PATH . '/layouts/header.php';
           </div>
         </div>
 
+        <!-- Payment Method (set by Finance) -->
+        <div class="rounded-lg border border-gray-200 bg-white p-4">
+          <label class="mb-1 block text-xs text-gray-500"><?= t('label.payment_method') ?> <span class="text-red-500">*</span></label>
+          <select name="payment_method" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+            <option value=""><?= APP_LANG === 'th' ? '-- เลือกวิธีชำระเงิน --' : '-- Select payment method --' ?></option>
+            <?php foreach (['cheque' => 'Cheque', 'transfer' => 'Bank Transfer', 'cash' => 'Cash'] as $methodValue => $methodLabel): ?>
+              <option value="<?= $methodValue ?>" <?= $request['payment_method'] === $methodValue ? 'selected' : '' ?>><?= $methodLabel ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+
         <!-- Action Buttons -->
         <div class="flex flex-wrap gap-2 pt-2">
           <button type="submit" name="review_decision" value="save_only"
@@ -948,7 +951,8 @@ include ROOT_PATH . '/layouts/header.php';
         <input type="hidden" name="action" value="submit_finance_review">
         <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.submit_finance') ?></button>
       </form>
-      <form method="POST" class="mt-2 space-y-2">
+      <button type="button" id="returnBtn_acct" onclick="showReasonForm('returnBtn_acct','returnForm_acct')" class="mt-2 w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
+      <form method="POST" id="returnForm_acct" class="hidden mt-2 space-y-2">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="return">
         <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
@@ -957,13 +961,20 @@ include ROOT_PATH . '/layouts/header.php';
           <option value="Accounting">Accounting</option>
         </select>
         <textarea name="return_reason" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
+        <div class="flex gap-2">
+          <button type="button" onclick="hideReasonForm('returnBtn_acct','returnForm_acct')" class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"><?= t('btn.cancel') ?></button>
+          <button class="flex-1 rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
+        </div>
       </form>
-      <form method="POST" class="mt-2">
+      <button type="button" id="rejectBtn_acct" onclick="showReasonForm('rejectBtn_acct','rejectForm_acct')" class="mt-2 w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
+      <form method="POST" id="rejectForm_acct" class="hidden mt-2 space-y-2">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="reject">
-        <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
+        <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <div class="flex gap-2">
+          <button type="button" onclick="hideReasonForm('rejectBtn_acct','rejectForm_acct')" class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"><?= t('btn.cancel') ?></button>
+          <button class="flex-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
+        </div>
       </form>
       <?php elseif ($request['status'] === 'Pending Finance Review' && hasRole('admin', 'checker', 'finance_manager')): ?>
       <p class="mb-3 text-sm text-gray-600"><?= t('pr.detail.pending_finance') ?></p>
@@ -993,15 +1004,16 @@ include ROOT_PATH . '/layouts/header.php';
       <a href="#checker-review" class="block w-full rounded-lg border border-blue-300 py-2 text-center text-sm text-blue-600 hover:bg-blue-50">
         <?= t('pr.detail.goto_review') ?>
       </a>
-      <details class="mt-3">
-        <summary class="cursor-pointer text-xs text-red-500 hover:underline"><?= t('pr.detail.reject_option') ?></summary>
-        <form method="POST" class="mt-2">
-          <?= csrfField() ?>
-          <input type="hidden" name="action" value="reject">
-          <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-          <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
-        </form>
-      </details>
+      <button type="button" id="rejectBtn_checker" onclick="showReasonForm('rejectBtn_checker','rejectForm_checker')" class="mt-3 w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
+      <form method="POST" id="rejectForm_checker" class="hidden mt-3 space-y-2">
+        <?= csrfField() ?>
+        <input type="hidden" name="action" value="reject">
+        <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <div class="flex gap-2">
+          <button type="button" onclick="hideReasonForm('rejectBtn_checker','rejectForm_checker')" class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"><?= t('btn.cancel') ?></button>
+          <button class="flex-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
+        </div>
+      </form>
       <?php elseif ($request['status'] === 'Pending Management Approval' && $canApproveManagementStep): ?>
       <form method="POST" class="space-y-2">
         <?= csrfField() ?>
@@ -1009,7 +1021,8 @@ include ROOT_PATH . '/layouts/header.php';
         <textarea name="comment" rows="2" placeholder="<?= t('label.comment') ?>..." class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
         <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.approve_btn') ?></button>
       </form>
-      <form method="POST" class="mt-2 space-y-2">
+      <button type="button" id="returnBtn_appr" onclick="showReasonForm('returnBtn_appr','returnForm_appr')" class="mt-2 w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
+      <form method="POST" id="returnForm_appr" class="hidden mt-2 space-y-2">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="return">
         <select name="return_to" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
@@ -1018,13 +1031,20 @@ include ROOT_PATH . '/layouts/header.php';
           <option value="Accounting">Accounting</option>
         </select>
         <textarea name="return_reason" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
+        <div class="flex gap-2">
+          <button type="button" onclick="hideReasonForm('returnBtn_appr','returnForm_appr')" class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"><?= t('btn.cancel') ?></button>
+          <button class="flex-1 rounded-lg bg-rose-500 py-2 text-sm font-medium text-white hover:bg-rose-600"><?= t('pr.detail.return_btn') ?></button>
+        </div>
       </form>
-      <form method="POST" class="mt-2">
+      <button type="button" id="rejectBtn_appr" onclick="showReasonForm('rejectBtn_appr','rejectForm_appr')" class="mt-2 w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
+      <form method="POST" id="rejectForm_appr" class="hidden mt-2 space-y-2">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="reject">
-        <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        <button class="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
+        <textarea name="comment" rows="2" required placeholder="<?= t('pr.detail.return_reason') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        <div class="flex gap-2">
+          <button type="button" onclick="hideReasonForm('rejectBtn_appr','rejectForm_appr')" class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"><?= t('btn.cancel') ?></button>
+          <button class="flex-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"><?= t('pr.detail.reject_btn') ?></button>
+        </div>
       </form>
       <?php elseif ($request['status'] === 'Pending Management Approval'): ?>
       <p class="py-2 text-center text-sm text-gray-400"><?= t('pr.detail.waiting_approver') ?></p>
@@ -1093,6 +1113,45 @@ include ROOT_PATH . '/layouts/header.php';
 </div>
 
 <script>
+function updateWhtCalculation() {
+    var form = document.getElementById('review-form');
+    if (!form) return;
+
+    var applicable = document.getElementById('wht_applicable').checked;
+    var rate = Number(document.getElementById('wht_rate').value) || 0;
+    var baseAmount = Number(document.getElementById('wht_base_amount').value) || 0;
+    var grossAmount = Number(document.getElementById('gross_amount').value) || 0;
+    var whtAmount = applicable
+        ? Math.round(((baseAmount * rate) / 100 + Number.EPSILON) * 100) / 100
+        : 0;
+    var netPayable = Math.max(0, grossAmount - whtAmount);
+
+    document.getElementById('wht_amount').value = whtAmount.toFixed(2);
+    document.getElementById('net_payable_preview').textContent = 'THB ' + netPayable.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+['wht_applicable', 'wht_rate', 'wht_base_amount', 'gross_amount'].forEach(function (id) {
+    var field = document.getElementById(id);
+    if (field) {
+        field.addEventListener('input', updateWhtCalculation);
+        field.addEventListener('change', updateWhtCalculation);
+    }
+});
+updateWhtCalculation();
+
+function showReasonForm(btnId, formId) {
+    document.getElementById(btnId).classList.add('hidden');
+    document.getElementById(formId).classList.remove('hidden');
+}
+
+function hideReasonForm(btnId, formId) {
+    document.getElementById(formId).classList.add('hidden');
+    document.getElementById(btnId).classList.remove('hidden');
+}
+
 function toggleDocSection(section, accepted) {
     var area = document.getElementById(section + '_comment_area');
     if (!area) return;

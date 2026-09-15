@@ -29,12 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_req
     $vendorName = trim($_POST['vendor_name'] ?? '');
     $vendorCode = trim($_POST['vendor_code'] ?? '');
     $dueDate = trim($_POST['due_date'] ?? '');
-    $payMethod = trim($_POST['payment_method'] ?? 'cheque');
-    $priority = trim($_POST['priority'] ?? 'normal');
+    $priority = trim($_POST['priority'] ?? '');
+    $priority = in_array($priority, ['low', 'urgent'], true) ? $priority : 'normal';
+    $priorityReason = trim($_POST['priority_reason'] ?? '');
     $note = trim($_POST['note'] ?? '');
     $whtApplicable = !empty($_POST['wht_applicable']) ? 1 : 0;
     $whtRate = max(0, (float)($_POST['wht_rate'] ?? 0));
-    $postedWhtAmount = max(0, (float)($_POST['wht_amount'] ?? 0));
     $postedWhtBase = max(0, (float)($_POST['wht_base_amount'] ?? 0));
     $taxInvoiceRequired = !empty($_POST['tax_invoice_required']) ? 1 : 0;
     $invoiceIds = array_values(array_filter($_POST['invoice_ids'] ?? [], static fn($id) => (int)$id > 0));
@@ -46,6 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_req
     if (empty($invoiceIds)) {
         flash('error', 'Please select at least one AP invoice');
         redirect(BASE_URL . '/modules/payment_requests/create.php');
+    }
+    if ($whtApplicable && !in_array($whtRate, [1.0, 3.0, 5.0], true)) {
+        flash('error', 'Please select a valid WHT rate (1%, 3%, or 5%)');
+        redirect(BASE_URL . '/modules/payment_requests/create.php');
+    }
+    if ($priority === 'urgent' && $priorityReason === '') {
+        flash('error', 'Please specify the reason for Urgent priority');
+        redirect(BASE_URL . '/modules/payment_requests/create.php');
+    }
+    if ($priority !== 'urgent') {
+        $priorityReason = '';
     }
 
     $placeholders = implode(',', array_fill(0, count($invoiceIds), '?'));
@@ -74,10 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_req
 
     $grossAmount = array_sum(array_map(static fn($inv) => (float)$inv['ap_balance'], $selectedInvoices));
     $whtBaseAmount = $postedWhtBase > 0 ? $postedWhtBase : $grossAmount;
-    $whtAmount = $whtApplicable ? $postedWhtAmount : 0.0;
-    if ($whtApplicable && $whtAmount <= 0 && $whtRate > 0) {
-        $whtAmount = round(($whtBaseAmount * $whtRate) / 100, 2);
-    }
+    $whtAmount = $whtApplicable ? round(($whtBaseAmount * $whtRate) / 100, 2) : 0.0;
     if (!$whtApplicable) {
         $whtRate = 0;
         $whtBaseAmount = 0;
@@ -112,12 +120,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_req
         INSERT INTO payment_requests (
             request_no, vendor_id, vendor_code, vendor_name,
             total_amount, gross_amount, wht_applicable, wht_rate, wht_base_amount, wht_amount, net_payable,
-            due_date, payment_method, status, priority, note,
+            due_date, payment_method, status, priority, priority_reason, note,
             tax_invoice_required, has_po, has_grn, created_by, submitted_at
         ) VALUES (
             ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, datetime('now','localtime')
         )
     ");
@@ -134,9 +142,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_req
         $whtAmount,
         $netPayable,
         $dueDate,
-        $payMethod,
+        null,
         'Pending Documents',
         $priority,
+        $priorityReason,
         $note,
         $taxInvoiceRequired,
         $hasPo,
@@ -383,14 +392,7 @@ include ROOT_PATH . '/layouts/header.php';
                class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
       </div>
 
-      <div class="mb-3">
-        <label class="mb-1 block text-xs text-gray-500"><?= t('label.payment_method') ?></label>
-        <select name="payment_method" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-          <option value="cheque">Cheque</option>
-          <option value="transfer">Bank Transfer</option>
-          <option value="cash">Cash</option>
-        </select>
-      </div>
+      <p class="mb-3 text-xs text-gray-400"><?= APP_LANG === 'th' ? 'ไม่ต้องระบุวิธีชำระเงิน — ฝ่ายการเงินจะเป็นผู้กำหนดในขั้นตอน Finance Review' : 'Payment method is not required here — Finance will set it during Finance Review.' ?></p>
 
       <div class="mb-3 rounded-lg border border-gray-200 p-3">
         <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -400,13 +402,17 @@ include ROOT_PATH . '/layouts/header.php';
         <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_rate') ?></label>
-            <input type="number" step="0.01" min="0" name="wht_rate" x-model.number="whtRate"
-                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Example: 3.00">
+            <select name="wht_rate" x-model.number="whtRate"
+                    class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+              <option value="1">1%</option>
+              <option value="3">3%</option>
+              <option value="5">5%</option>
+            </select>
           </div>
           <div>
             <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_amount') ?></label>
-            <input type="number" step="0.01" min="0" name="wht_amount" x-model.number="whtAmount"
-                   class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Auto or manual">
+            <input type="number" step="0.01" min="0" name="wht_amount" :value="computedWht.toFixed(2)" readonly
+                   class="theme-input w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm">
           </div>
           <div class="md:col-span-2">
             <label class="mb-1 block text-xs text-gray-500"><?= t('label.wht_base') ?></label>
@@ -426,11 +432,17 @@ include ROOT_PATH . '/layouts/header.php';
 
       <div class="mb-3">
         <label class="mb-1 block text-xs text-gray-500"><?= t('label.priority') ?></label>
-        <select name="priority" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+        <select name="priority" x-model="priority" class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
           <option value="normal">Normal</option>
-          <option value="urgent">Urgent</option>
           <option value="low">Low</option>
+          <option value="urgent">Urgent</option>
         </select>
+      </div>
+      <div class="mb-3" x-show="priority === 'urgent'" x-cloak>
+        <label class="mb-1 block text-xs text-gray-500"><?= APP_LANG === 'th' ? 'สาเหตุที่เร่งด่วน' : 'Reason for Urgent priority' ?> <span class="text-red-500">*</span></label>
+        <textarea name="priority_reason" x-model="priorityReason" :required="priority === 'urgent'" rows="2"
+                  class="theme-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="<?= APP_LANG === 'th' ? 'ระบุสาเหตุที่ต้องการให้เร่งด่วน...' : 'Explain why this request is urgent...' ?>"></textarea>
       </div>
 
       <div class="mb-4">
@@ -485,9 +497,10 @@ function prForm(vendorMap, preselected) {
         selectedAmounts: {},
         totalAmount: 0,
         whtApplicable: false,
-        whtRate: 0,
-        whtAmount: 0,
+        whtRate: 3,
         whtBaseAmount: 0,
+        priority: 'normal',
+        priorityReason: '',
         vendorName: '',
         vendorCode: '',
         vendorId: 0,
@@ -497,11 +510,8 @@ function prForm(vendorMap, preselected) {
             if (!this.whtApplicable) {
                 return 0;
             }
-            if (Number(this.whtAmount) > 0) {
-                return Number(this.whtAmount);
-            }
             if (Number(this.whtRate) > 0) {
-                return Number(((Number(this.whtBaseAmount) || Number(this.totalAmount)) * Number(this.whtRate)) / 100);
+                return Math.round((((Number(this.whtBaseAmount) || Number(this.totalAmount)) * Number(this.whtRate)) / 100 + Number.EPSILON) * 100) / 100;
             }
             return 0;
         },

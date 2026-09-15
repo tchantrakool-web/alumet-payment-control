@@ -451,7 +451,7 @@ include ROOT_PATH . '/layouts/header.php';
           </td>
           <td class="px-4 py-3"><?= h($row['vendor_name']) ?></td>
           <td class="px-4 py-3 text-right font-semibold" style="color:#003B5C;"><?= fmtMoney((float) $row['net_payable']) ?></td>
-          <td class="px-4 py-3 text-xs capitalize"><?= h($row['payment_method']) ?></td>
+          <td class="px-4 py-3 text-xs capitalize"><?= h((string)($row['payment_method'] ?: '-')) ?></td>
           <td class="px-4 py-3"><?= statusBadge($row['status']) ?></td>
         </tr>
         <?php endforeach; ?>

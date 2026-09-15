@@ -131,6 +131,40 @@ function verifyCsrfToken(?string $token): bool {
     return $expected !== '' && $token !== null && hash_equals($expected, $token);
 }
 
+/**
+ * Shared dialog chrome: one place that defines dialog size and all three close
+ * paths (Escape, backdrop click, header close button). $show is the literal
+ * Alpine boolean expression the caller's own showForm/editing state exposes
+ * (e.g. "showForm" or "showForm === 'status'") — this helper never reads or
+ * writes `editing` itself, callers own that entirely. $show may be a plain
+ * variable (also used, unchanged, as the close assignment) or a comparison
+ * (not assignable) — pass $close explicitly in that case, e.g. "showForm = false".
+ */
+function dialogOpen(string $show, string $title, string $maxWidth = 'max-w-lg', ?string $titleExpr = null, ?string $close = null): void {
+    $close ??= $show . ' = false';
+    ?>
+    <div x-cloak x-show="<?= h($show) ?>" x-transition.opacity
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+         @keydown.escape.window="<?= h($close) ?>"
+         @click.self="<?= h($close) ?>"
+         role="dialog" aria-modal="true">
+      <div class="w-full <?= h($maxWidth) ?> max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl">
+        <div class="flex items-center justify-between border-b px-5 py-4">
+          <h3 class="font-semibold text-gray-800"<?= $titleExpr !== null ? ' x-text="' . h($titleExpr) . '"' : '' ?>><?= $titleExpr !== null ? '' : h($title) ?></h3>
+          <button type="button" @click="<?= h($close) ?>" class="text-gray-400 hover:text-gray-600" aria-label="Close">&#10005;</button>
+        </div>
+        <div class="p-5">
+    <?php
+}
+
+function dialogClose(): void {
+    ?>
+        </div>
+      </div>
+    </div>
+    <?php
+}
+
 function t(string $key, string $default = ''): string {
     static $translations = null;
     if ($translations === null) {

@@ -307,6 +307,13 @@ function initializeDB(PDO $pdo): void {
             sent_at TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
+
+        CREATE TABLE IF NOT EXISTS notification_reads (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            notification_key TEXT NOT NULL,
+            read_at TEXT DEFAULT (datetime('now','localtime')),
+            PRIMARY KEY (user_id, notification_key)
+        );
     ");
 
     runMigrations($pdo);
@@ -341,8 +348,11 @@ function runMigrations(PDO $pdo): void {
     ensureColumn($pdo, 'finance_ap_records', 'source_row', "INTEGER");
     ensureColumn($pdo, 'cheques', 'source_type', "TEXT");
     ensureColumn($pdo, 'cheques', 'source_id', "INTEGER");
+    ensureColumn($pdo, 'payment_requests', 'priority_reason', "TEXT");
 
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_cheques_source ON cheques(source_type, source_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_payment_requests_notification ON payment_requests(status, is_deleted)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_approval_tasks_notification ON approval_tasks(payment_request_id, approver_id, status, sequence)");
 
     // The original seeded tiers used whole-baht starts (100001, 500001,
     // 2000001), leaving cent-valued payments between tiers with no approver.

@@ -105,6 +105,8 @@ $readyPRs = $db->query("
 include ROOT_PATH . '/layouts/header.php';
 ?>
 
+<div x-data="{ showForm: false }">
+
 <div class="mb-5">
   <h1 class="text-2xl font-bold text-gray-800"><?= t('batch.title') ?></h1>
   <p class="text-gray-500 text-sm"><?= t('batch.subtitle') ?></p>
@@ -117,7 +119,7 @@ include ROOT_PATH . '/layouts/header.php';
     <div class="bg-white rounded-xl border overflow-hidden">
       <div class="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
         <h3 class="font-semibold text-gray-700 text-sm"><?= t('batch.batches') ?></h3>
-        <?php if (canEdit('payment_batch')): ?><button onclick="document.getElementById('createBatchModal').classList.remove('hidden')"
+        <?php if (canEdit('payment_batch')): ?><button type="button" @click="showForm = true"
                 class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700"><?= t('batch.new') ?></button>
         <?php endif; ?>
       </div>
@@ -214,64 +216,12 @@ include ROOT_PATH . '/layouts/header.php';
   </div>
 </div>
 
-<!-- Create Batch Modal -->
-<div id="createBatchModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-  <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
-    <div class="flex items-center justify-between px-5 py-4 border-b">
-      <h3 class="font-semibold text-gray-800"><?= t('batch.create_title') ?></h3>
-      <button onclick="document.getElementById('createBatchModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
-    </div>
-    <form method="POST" class="p-5">
-      <?= csrfField() ?>
-      <input type="hidden" name="action" value="create_batch">
-      <div class="grid grid-cols-2 gap-3 mb-4">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1"><?= t('batch.batch_date') ?></label>
-          <input type="date" name="batch_date" value="<?= date('Y-m-d') ?>" required
-                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1"><?= t('batch.payment_type') ?></label>
-          <select name="payment_type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
-            <option value="cheque">Cheque</option>
-            <option value="transfer">Bank Transfer</option>
-          </select>
-        </div>
-        <div class="col-span-2">
-          <label class="block text-xs text-gray-500 mb-1">Note</label>
-          <input type="text" name="note" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" placeholder="หมายเหตุ...">
-        </div>
-      </div>
+<?php
+dialogOpen('showForm', t('batch.create_title'), 'max-w-2xl');
+include __DIR__ . '/_create_form.php';
+dialogClose();
+?>
 
-      <div class="mb-4">
-        <label class="block text-xs text-gray-500 mb-2"><?= t('batch.select_prs') ?></label>
-        <?php if (empty($readyPRs)): ?>
-        <p class="text-sm text-gray-400 p-3 border rounded-lg text-center"><?= t('batch.no_prs') ?></p>
-        <?php else: ?>
-        <div class="border rounded-lg divide-y max-h-64 overflow-y-auto">
-          <?php foreach ($readyPRs as $pr): ?>
-          <label class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
-            <input type="checkbox" name="pr_ids[]" value="<?= $pr['id'] ?>">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between">
-                <span class="font-mono text-xs"><?= h($pr['request_no']) ?></span>
-                <span class="font-semibold text-blue-700 text-sm">฿<?= fmtMoney($pr['net_payable']) ?></span>
-              </div>
-              <div class="text-xs text-gray-500 truncate"><?= h($pr['vendor_name']) ?> | Due: <?= fmtDate($pr['due_date']) ?></div>
-            </div>
-          </label>
-          <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-      </div>
-
-      <div class="flex gap-2 justify-end">
-        <button type="button" onclick="document.getElementById('createBatchModal').classList.add('hidden')"
-                class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"><?= t('btn.cancel') ?></button>
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"><?= t('batch.create_btn') ?></button>
-      </div>
-    </form>
-  </div>
 </div>
 
 <?php include ROOT_PATH . '/layouts/footer.php'; ?>

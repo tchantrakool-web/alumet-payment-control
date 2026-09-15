@@ -29,6 +29,7 @@ define('BASE_URL', $protocol . '://' . $host . $basePath);
 require_once ROOT_PATH . '/config/database.php';
 require_once ROOT_PATH . '/config/auth.php';
 require_once ROOT_PATH . '/config/functions.php';
+require_once ROOT_PATH . '/config/notifications.php';
 
 // Language detection — must run after session_start() (called inside auth.php)
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['en', 'th'], true)) {

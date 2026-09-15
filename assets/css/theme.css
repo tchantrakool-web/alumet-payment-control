@@ -1,0 +1,36 @@
+/*
+ * Tailwind's Preflight resets border-width to 0 on every element and padding to 0
+ * on button/input/optgroup/select/textarea (verified via computed styles). Every
+ * text field, textarea and <select> in this app therefore depends on carrying its
+ * own border/px/py/bg-* utility classes to look like a field at all; any one that
+ * doesn't renders with no border, no padding and no background.
+ *
+ * These rules restore a sane default appearance once, here, instead of requiring
+ * every field to repeat the same utility classes.
+ *
+ * Specificity is tuned deliberately, not incidentally:
+ *  - Tailwind's Play CDN always appends its compiled stylesheet at the very end of
+ *    <head> once it finishes scanning the page, regardless of where its <script>
+ *    tag sits in the source — so it always lands after this stylesheet in the
+ *    cascade. Plain-tag selectors here (specificity 0,0,1, same as Tailwind's own
+ *    `input, textarea, select { padding: 0 }` Preflight rule) would therefore lose
+ *    every tie. The leading `html` gives these rules 0,0,2, which beats Tailwind's
+ *    Preflight unconditionally, independent of source order.
+ *  - The `:where(:not(...))` exclusion list keeps checkbox/radio/file/button/submit
+ *    /reset/hidden inputs untouched (checkboxes/radios render natively regardless
+ *    of author border/background, but the padding here would still inflate their
+ *    layout box, so they're excluded) — `:where()` contributes zero specificity of
+ *    its own, so adding it does not push these selectors above 0,0,2.
+ *  - 0,0,2 is still below a single class selector (0,1,0), so any field that
+ *    already carries a real Tailwind utility class (border, bg-*, px-*, text-*)
+ *    keeps that value unchanged; these rules only fill in what's otherwise unset.
+ */
+html input:where(:not([type="checkbox"], [type="radio"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="hidden"])),
+html textarea,
+html select {
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: #fff;
+  font-size: 0.875rem;
+}

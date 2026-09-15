@@ -5,8 +5,6 @@ if (!canAccess('cheques')) { flash('error','Access denied'); redirect(BASE_URL .
 $pageTitle = 'Cheque Register';
 $db   = getDB();
 $user = currentUser();
-$_SESSION['cheque_csrf'] ??= bin2hex(random_bytes(32));
-$chequeCsrf = $_SESSION['cheque_csrf'];
 
 function isValidIsoDate(string $date): bool {
     $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
@@ -44,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Cheque Register is read-only for your role.');
         redirect(BASE_URL . '/modules/cheques/');
     }
-    if (!hash_equals($chequeCsrf, (string)($_POST['csrf_token'] ?? ''))) {
+    if (!verifyCsrfToken(isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : null)) {
         flash('error', 'Your session token expired. Please try again.');
         redirect(BASE_URL . '/modules/cheques/');
     }
@@ -314,8 +312,31 @@ if ($latestFinanceBatch) {
     $financeChequeCount = (int)$stmtFinanceCount->fetchColumn();
 }
 
+$prSupplierMap = [];
+foreach ($eligiblePRs as $pr) {
+    $prSupplierMap[(int)$pr['id']] = $pr['vendor_name'];
+}
+$chequeAllowedTransitions = [
+    'prepared' => ['released', 'received', 'cancelled', 'void'],
+    'signed' => ['released', 'received', 'cancelled', 'void'],
+    'released' => ['released', 'received', 'cancelled', 'void'],
+];
+
 include ROOT_PATH . '/layouts/header.php';
 ?>
+
+<div x-data='{
+  showForm: false,
+  open: {},
+  newCheque: { payment_request_id: "", cheque_no: "", cheque_date: "<?= date('Y-m-d') ?>", bank: "", payee_name: "" },
+  prSupplierMap: <?= json_encode($prSupplierMap, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+  closeAll() { this.showForm = false; this.open = {}; },
+  openCreate() {
+    this.closeAll();
+    this.newCheque = { payment_request_id: "", cheque_no: "", cheque_date: "<?= date('Y-m-d') ?>", bank: "", payee_name: "" };
+    this.showForm = true;
+  }
+}'>
 
 <div class="mb-5 flex items-center justify-between">
   <div>
@@ -329,7 +350,7 @@ include ROOT_PATH . '/layouts/header.php';
     </a>
     <?php if (canEdit('cheques') && $latestFinanceBatch && $financeChequeCount > 0): ?>
     <form method="POST">
-      <input type="hidden" name="csrf_token" value="<?= h($chequeCsrf) ?>">
+      <?= csrfField() ?>
       <input type="hidden" name="action" value="sync_finance">
       <input type="hidden" name="finance_batch_id" value="<?= (int)$latestFinanceBatch['id'] ?>">
       <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
@@ -338,7 +359,7 @@ include ROOT_PATH . '/layouts/header.php';
       </button>
     </form>
     <?php endif; ?>
-    <?php if (canEdit('cheques')): ?><button onclick="document.getElementById('createModal').classList.remove('hidden')"
+    <?php if (canEdit('cheques')): ?><button type="button" @click="openCreate()"
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
       <?= t('cheque.create') ?>
     </button><?php endif; ?>
@@ -439,14 +460,13 @@ include ROOT_PATH . '/layouts/header.php';
           <td class="px-4 py-2.5 text-xs text-gray-400"><?= fmtDateTime($c['created_at']) ?></td>
           <td class="px-4 py-2.5">
             <?php if (canEdit('cheques') && !in_array($c['status'], ['received','void','cancelled'], true)): ?>
-              <button type="button"
-                      onclick="openUpdateModal(<?= (int)$c['id'] ?>, <?= h(json_encode((string)$c['cheque_no'])) ?>, '<?= h((string)$c['status']) ?>')"
+              <button type="button" @click="closeAll(); open[<?= (int)$c['id'] ?>] = true"
                       class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
-                Update Status
+                Edit
               </button>
             <?php elseif ($c['status'] === 'prepared' && hasRole('maker')): ?>
               <form method="POST" class="min-w-28">
-                <input type="hidden" name="csrf_token" value="<?= h($chequeCsrf) ?>">
+                <?= csrfField() ?>
                 <input type="hidden" name="action" value="update_status">
                 <input type="hidden" name="cheque_id" value="<?= (int)$c['id'] ?>">
                 <select name="new_status" onchange="if(this.value !== 'prepared' && confirm('Move cheque <?= h((string)$c['cheque_no']) ?> to Bank Transfer?')) this.form.submit(); else this.value='prepared';"
@@ -467,176 +487,30 @@ include ROOT_PATH . '/layouts/header.php';
   </div>
 </div>
 
-<!-- Create Cheque Modal -->
-<div id="createModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-  <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
-    <div class="flex items-center justify-between px-5 py-4 border-b">
-      <h3 class="font-semibold text-gray-800"><?= t('cheque.create_title') ?></h3>
-      <button onclick="document.getElementById('createModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
-    </div>
-    <form method="POST" class="p-5 space-y-3">
-      <input type="hidden" name="csrf_token" value="<?= h($chequeCsrf) ?>">
-      <input type="hidden" name="action" value="create_cheque">
-      <div>
-        <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.select_pr') ?></label>
-        <select name="payment_request_id" id="createPaymentRequest" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
-          <option value="">-- เลือกเลขที่ PR --</option>
-          <?php if (!empty($eligiblePRs)): ?>
-          <optgroup label="พร้อมออกเช็ค">
-            <?php foreach ($eligiblePRs as $pr): ?>
-            <option value="<?= (int) $pr['id'] ?>" data-supplier="<?= h($pr['vendor_name']) ?>"><?= h($pr['request_no']) ?> — <?= h($pr['vendor_name']) ?> — ฿<?= fmtMoney((float) $pr['net_payable']) ?></option>
-            <?php endforeach; ?>
-          </optgroup>
-          <?php endif; ?>
-          <?php if (!empty($unavailablePRs)): ?>
-          <optgroup label="PR อื่น (ยังเลือกไม่ได้)">
-            <?php foreach ($unavailablePRs as $pr):
-              $unavailableReason = (int) $pr['has_active_cheque'] === 1 ? 'ออกเช็คแล้ว' : (string) $pr['status'];
-            ?>
-            <option value="" disabled><?= h($pr['request_no']) ?> — <?= h($unavailableReason) ?></option>
-            <?php endforeach; ?>
-          </optgroup>
-          <?php endif; ?>
-        </select>
-        <p class="mt-1 text-xs <?= empty($eligiblePRs) ? 'text-amber-600' : 'text-gray-400' ?>">
-          <?= empty($eligiblePRs)
-            ? 'ขณะนี้ไม่มี PR ที่พร้อมออกเช็ค: PR ต้องมีสถานะ Approved for Payment และยังไม่มีเช็คที่ใช้งานอยู่'
-            : 'เลือกได้เฉพาะ PR สถานะ Approved for Payment ที่ยังไม่เคยออกเช็ค' ?>
-        </p>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.col.cheque_no') ?></label>
-          <input type="text" name="cheque_no" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Cheque Date</label>
-          <input type="date" name="cheque_date" required value="<?= date('Y-m-d') ?>"
-                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Bank / ธนาคาร</label>
-          <select name="bank" required
-                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
-            <option value="">-- เลือกธนาคาร --</option>
-            <?php foreach ($thaiBanks as $bankName): ?>
-            <option value="<?= h($bankName) ?>"><?= h($bankName) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Payee Name / Supplier</label>
-          <input type="text" name="payee_name" id="createPayeeName" readonly required
-                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none bg-gray-100 text-gray-700 cursor-not-allowed"
-                 placeholder="เลือก Payment Request ก่อน">
-        </div>
-      </div>
-      <div class="flex gap-2 justify-end pt-2">
-        <button type="button" onclick="document.getElementById('createModal').classList.add('hidden')"
-                class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600">Cancel</button>
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Create</button>
-      </div>
-    </form>
-  </div>
+<?php
+dialogOpen('showForm', t('cheque.create_title'));
+include __DIR__ . '/_create_form.php';
+dialogClose();
+
+// One dialog per cheque, rendered here (after the table, never inside it —
+// a <div> is not valid table content and the browser would hoist it out,
+// away from this x-data scope). Each dialog is bound to its own row's data,
+// so there is no shared "which cheque" state to get wrong.
+foreach ($cheques as $c) {
+    if (!(canEdit('cheques') && !in_array($c['status'], ['received', 'void', 'cancelled'], true))) {
+        continue;
+    }
+    $allowedStatuses = $chequeAllowedTransitions[$c['status']] ?? [];
+    if (empty($allowedStatuses)) {
+        continue;
+    }
+    $chequeId = (int)$c['id'];
+    dialogOpen("open[{$chequeId}]", t('cheque.update_title') . ': ' . $c['cheque_no'], 'max-w-md', null, "open[{$chequeId}] = false");
+    include __DIR__ . '/_status_form.php';
+    dialogClose();
+}
+?>
+
 </div>
-
-<!-- Update Status Modal -->
-<div id="updateModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-  <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
-    <div class="flex items-center justify-between px-5 py-4 border-b">
-      <h3 class="font-semibold text-gray-800"><?= t('cheque.update_title') ?></h3>
-      <button onclick="document.getElementById('updateModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
-    </div>
-    <form method="POST" class="p-5 space-y-3">
-      <input type="hidden" name="csrf_token" value="<?= h($chequeCsrf) ?>">
-      <input type="hidden" name="action" value="update_status">
-      <input type="hidden" name="cheque_id" id="updateChequeId">
-      <p class="text-sm text-gray-600">Cheque: <span id="updateChequeNo" class="font-semibold"></span></p>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.new_status') ?></label>
-        <select name="new_status" id="updateNewStatus" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"></select>
-      </div>
-      <div id="receiverFields" class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.receiver_name') ?></label>
-          <input type="text" name="receiver_name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" placeholder="<?= t('cheque.receiver_name') ?>...">
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.received_date') ?></label>
-          <input type="date" name="received_date" value="<?= date('Y-m-d') ?>"
-                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
-        </div>
-      </div>
-      <div id="voidReasonField">
-        <label class="block text-xs text-gray-500 mb-1"><?= t('cheque.void_reason') ?></label>
-        <input type="text" name="void_reason" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" placeholder="เหตุผล...">
-      </div>
-      <div class="flex gap-2 justify-end pt-2">
-        <button type="button" onclick="document.getElementById('updateModal').classList.add('hidden')"
-                class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600">Cancel</button>
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Update</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<script>
-const createPaymentRequest = document.getElementById('createPaymentRequest');
-const createPayeeName = document.getElementById('createPayeeName');
-
-function syncPayeeWithSupplier() {
-    const selectedOption = createPaymentRequest.options[createPaymentRequest.selectedIndex];
-    createPayeeName.value = selectedOption?.dataset.supplier || '';
-}
-
-createPaymentRequest.addEventListener('change', syncPayeeWithSupplier);
-syncPayeeWithSupplier();
-
-const chequeTransitions = {
-    prepared: ['released', 'received', 'cancelled', 'void'],
-    signed: ['released', 'received', 'cancelled', 'void'],
-    released: ['released', 'received', 'cancelled', 'void']
-};
-
-function syncUpdateFields() {
-    const status = document.getElementById('updateNewStatus').value;
-    const receiverFields = document.getElementById('receiverFields');
-    const voidReasonField = document.getElementById('voidReasonField');
-    const receiverInput = receiverFields.querySelector('input[name="receiver_name"]');
-    const receivedDateInput = receiverFields.querySelector('input[name="received_date"]');
-    const reasonInput = voidReasonField.querySelector('input[name="void_reason"]');
-    receiverFields.classList.toggle('hidden', status !== 'received');
-    voidReasonField.classList.toggle('hidden', !['cancelled', 'void'].includes(status));
-    receiverInput.required = status === 'received';
-    receivedDateInput.required = status === 'received';
-    reasonInput.required = ['cancelled', 'void'].includes(status);
-}
-
-function openUpdateModal(id, no, currentStatus, preferredStatus = '') {
-    document.getElementById('updateChequeId').value = id;
-    document.getElementById('updateChequeNo').textContent = no;
-    const statusSelect = document.getElementById('updateNewStatus');
-    const labels = {
-        released: 'Bank Transfer',
-        received: 'Receive by Supplier',
-        cancelled: 'Cancelled',
-        void: 'Void'
-    };
-    statusSelect.innerHTML = '';
-    (chequeTransitions[currentStatus] || []).forEach(status => {
-        const option = document.createElement('option');
-        option.value = status;
-        option.textContent = labels[status] || status;
-        statusSelect.appendChild(option);
-    });
-    statusSelect.value = preferredStatus && (chequeTransitions[currentStatus] || []).includes(preferredStatus)
-        ? preferredStatus
-        : (chequeTransitions[currentStatus] || [])[0] || '';
-    syncUpdateFields();
-    document.getElementById('updateModal').classList.remove('hidden');
-}
-
-document.getElementById('updateNewStatus').addEventListener('change', syncUpdateFields);
-</script>
 
 <?php include ROOT_PATH . '/layouts/footer.php'; ?>
