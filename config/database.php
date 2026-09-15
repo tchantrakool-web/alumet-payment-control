@@ -12,6 +12,66 @@
  * thing and is exactly what this file does.
  */
 
+function dbDriver(): string {
+    return env('DB_DRIVER', 'sqlite');
+}
+
+/**
+ * Marks a value as a raw SQL expression (e.g. CURRENT_TIMESTAMP) rather than
+ * a bound parameter — upsert() and any other helper that builds VALUES(...)
+ * lists splices $sql directly into the statement instead of binding it as a
+ * string. Never wrap anything containing untrusted input in this — $sql is
+ * emitted verbatim.
+ */
+final class SqlExpression {
+    public function __construct(public readonly string $sql) {}
+}
+
+function sqlNow(): SqlExpression {
+    return new SqlExpression('CURRENT_TIMESTAMP');
+}
+
+/**
+ * Insert a row, or update it in place if a row already exists with the same
+ * value(s) in the unique/primary-key column(s) named by $uniqueBy — one
+ * statement, one round trip, no SELECT-then-branch race window, and the
+ * exact same call on both SQLite (ON CONFLICT) and MySQL (ON DUPLICATE KEY
+ * UPDATE), picked automatically via dbDriver(). $uniqueBy must name column(s)
+ * already covered by a UNIQUE or PRIMARY KEY constraint on $table — that
+ * constraint is what either dialect's upsert relies on to detect a conflict.
+ * Every column in $data other than $uniqueBy and $insertOnly is refreshed on
+ * conflict too; $insertOnly columns (e.g. created_by) are written on first
+ * insert only and left untouched on an update. Pass sqlNow() instead of a
+ * PHP value for a column that should be set to the current time.
+ */
+function upsert(PDO $db, string $table, array $data, array $uniqueBy, array $insertOnly = []): void {
+    $columns = array_keys($data);
+    $bindings = [];
+    $valueSql = [];
+    foreach ($data as $value) {
+        if ($value instanceof SqlExpression) {
+            $valueSql[] = $value->sql;
+        } else {
+            $valueSql[] = '?';
+            $bindings[] = $value;
+        }
+    }
+    $columnList = implode(', ', $columns);
+    $valuesList = implode(', ', $valueSql);
+    $updateColumns = array_values(array_diff($columns, $uniqueBy, $insertOnly));
+
+    if (dbDriver() === 'mysql') {
+        $setClause = implode(', ', array_map(static fn($c) => "{$c} = VALUES({$c})", $updateColumns));
+        $sql = "INSERT INTO {$table} ({$columnList}) VALUES ({$valuesList}) ON DUPLICATE KEY UPDATE {$setClause}";
+    } else {
+        $conflictColumns = implode(', ', $uniqueBy);
+        $setClause = implode(', ', array_map(static fn($c) => "{$c} = excluded.{$c}", $updateColumns));
+        $sql = "INSERT INTO {$table} ({$columnList}) VALUES ({$valuesList}) ON CONFLICT({$conflictColumns}) DO UPDATE SET {$setClause}";
+    }
+
+    $db->prepare($sql)->execute($bindings);
+}
+
 function getDB(): PDO {
     static $pdo = null;
     if ($pdo !== null) {
@@ -88,7 +148,7 @@ function runPendingMigrations(PDO $pdo, string $driver): void {
     // no schema_migrations table yet, without needing a migration of its own.
     $pdo->exec($driver === 'mysql'
         ? "CREATE TABLE IF NOT EXISTS schema_migrations (migration VARCHAR(255) PRIMARY KEY, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-        : "CREATE TABLE IF NOT EXISTS schema_migrations (migration TEXT PRIMARY KEY, applied_at TEXT DEFAULT (datetime('now','localtime')))"
+        : "CREATE TABLE IF NOT EXISTS schema_migrations (migration TEXT PRIMARY KEY, applied_at TEXT DEFAULT CURRENT_TIMESTAMP)"
     );
 
     $applied = array_flip($pdo->query('SELECT migration FROM schema_migrations')->fetchAll(PDO::FETCH_COLUMN));
@@ -109,7 +169,7 @@ function runPendingMigrations(PDO $pdo, string $driver): void {
         $pdo->beginTransaction();
         try {
             runSqlFile($pdo, $file);
-            $stmt = $pdo->prepare('INSERT INTO schema_migrations (migration) VALUES (?)');
+            $stmt = $pdo->prepare('INSERT INTO schema_migrations (migration, applied_at) VALUES (?, CURRENT_TIMESTAMP)');
             $stmt->execute([$name]);
             $pdo->commit();
         } catch (Throwable $e) {

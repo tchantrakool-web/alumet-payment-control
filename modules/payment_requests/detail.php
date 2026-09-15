@@ -137,8 +137,8 @@ function updateRequestItemAmounts(PDO $db, int $paymentRequestId, float $grossAm
 
 function addHistory(PDO $db, int $paymentRequestId, int $userId, string $action, string $comment, string $oldStatus, string $newStatus): void {
     $db->prepare("
-        INSERT INTO approval_history (payment_request_id, user_id, action, comment, old_status, new_status)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO approval_history (payment_request_id, user_id, action, comment, old_status, new_status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ")->execute([$paymentRequestId, $userId, $action, $comment, $oldStatus, $newStatus]);
 }
 
@@ -159,8 +159,8 @@ function sendCorrectionEmail(PDO $db, array $request, string $correctionDetails,
           . "วันที่: " . date('d/m/Y H:i');
 
     $db->prepare("
-        INSERT INTO notification_logs (related_type, related_id, recipient_id, recipient_email, subject, body, status)
-        VALUES ('payment_request', ?, ?, ?, ?, ?, 'pending')
+        INSERT INTO notification_logs (related_type, related_id, recipient_id, recipient_email, subject, body, status, created_at)
+        VALUES ('payment_request', ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
     ")->execute([$request['id'], $maker['id'], $maker['email'] ?? '', $subject, $body]);
 
     if (!empty($maker['email'])) {
@@ -168,7 +168,7 @@ function sendCorrectionEmail(PDO $db, array $request, string $correctionDetails,
         $sent = @mail($maker['email'], $subject, $body, $headers);
         if ($sent) {
             $db->prepare("
-                UPDATE notification_logs SET status = 'sent', sent_at = datetime('now','localtime')
+                UPDATE notification_logs SET status = 'sent', sent_at = CURRENT_TIMESTAMP
                 WHERE related_type = 'payment_request' AND related_id = ? ORDER BY id DESC LIMIT 1
             ")->execute([$request['id']]);
         }
@@ -218,8 +218,8 @@ function createApprovalTasks(PDO $db, int $paymentRequestId, float $amount): int
 
     $db->prepare("DELETE FROM approval_tasks WHERE payment_request_id = ?")->execute([$paymentRequestId]);
     $insertTask = $db->prepare("
-        INSERT INTO approval_tasks (payment_request_id, approver_id, sequence)
-        VALUES (?, ?, ?)
+        INSERT INTO approval_tasks (payment_request_id, approver_id, sequence, created_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
     ");
     foreach ($tasks as $task) {
         $insertTask->execute($task);
@@ -282,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->prepare("
             UPDATE payment_requests
             SET gross_amount = ?, total_amount = ?, wht_applicable = ?, wht_rate = ?, wht_base_amount = ?, wht_amount = ?, net_payable = ?,
-                tax_invoice_required = ?, has_po = ?, has_grn = ?, has_invoice = ?, has_tax_invoice = ?, note = ?, updated_at = datetime('now','localtime')
+                tax_invoice_required = ?, has_po = ?, has_grn = ?, has_invoice = ?, has_tax_invoice = ?, note = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ")->execute([
             $grossAmount,
@@ -369,7 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 checker_invoice_accepted = ?, checker_invoice_comment = ?,
                 checker_gr_accepted = ?, checker_gr_comment = ?,
                 payment_method = CASE WHEN ? <> '' THEN ? ELSE payment_method END,
-                updated_at = datetime('now','localtime')
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ")->execute([$poAccepted, $poComment, $invoiceAccepted, $invoiceComment, $grAccepted, $grComment, $paymentMethod, $paymentMethod, $id]);
 
@@ -390,7 +390,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 flash('error', 'No complete approval route is configured for this amount. Please contact an administrator.');
                 redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
             }
-            $db->prepare("UPDATE payment_requests SET checked_by = ?, checked_at = datetime('now','localtime') WHERE id = ?")
+            $db->prepare("UPDATE payment_requests SET checked_by = ?, checked_at = CURRENT_TIMESTAMP WHERE id = ?")
                 ->execute([$user['id'], $id]);
             $newStatus = 'Pending Management Approval';
             $statusChanged = true;
@@ -405,7 +405,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
             }
             $correctionMsg = implode(' | ', $parts);
-            $db->prepare("UPDATE payment_requests SET return_to = 'Maker', return_reason = ?, updated_at = datetime('now','localtime') WHERE id = ?")
+            $db->prepare("UPDATE payment_requests SET return_to = 'Maker', return_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
                 ->execute([$correctionMsg, $id]);
             sendCorrectionEmail($db, $request, $correctionMsg, $user);
             $newStatus = 'Returned for Correction';
@@ -431,7 +431,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($activePendingApprovalTask !== null) {
             $db->prepare("
                 UPDATE approval_tasks
-                SET status = 'approved', action = 'approve', comment = ?, actioned_at = datetime('now','localtime')
+                SET status = 'approved', action = 'approve', comment = ?, actioned_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND status = 'pending'
             ")->execute([$comment, $activePendingApprovalTask['id']]);
         }
@@ -462,13 +462,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($oldStatus === 'Pending Management Approval' && $activePendingApprovalTask !== null) {
             $db->prepare("
                 UPDATE approval_tasks
-                SET status = 'returned', action = 'return', comment = ?, actioned_at = datetime('now','localtime')
+                SET status = 'returned', action = 'return', comment = ?, actioned_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND status = 'pending'
             ")->execute([$comment, $activePendingApprovalTask['id']]);
         }
         $db->prepare("
             UPDATE payment_requests
-            SET return_to = ?, return_reason = ?, updated_at = datetime('now','localtime')
+            SET return_to = ?, return_reason = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ")->execute([$returnTo, $returnReason, $id]);
     } elseif ($action === 'reject' && (
@@ -483,7 +483,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($oldStatus === 'Pending Management Approval' && $activePendingApprovalTask !== null) {
             $db->prepare("
                 UPDATE approval_tasks
-                SET status = 'rejected', action = 'reject', comment = ?, actioned_at = datetime('now','localtime')
+                SET status = 'rejected', action = 'reject', comment = ?, actioned_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND status = 'pending'
             ")->execute([$comment, $activePendingApprovalTask['id']]);
         }
@@ -515,7 +515,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $db->prepare("
             UPDATE payment_requests
-            SET payment_date = ?, payment_reference = ?, payment_bank = ?, payer_name = ?, updated_at = datetime('now','localtime')
+            SET payment_date = ?, payment_reference = ?, payment_bank = ?, payer_name = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ")->execute([$paymentDate, $paymentReference, $paymentBank, $payerName, $id]);
 
@@ -524,20 +524,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($statusChanged) {
-        $db->prepare("UPDATE payment_requests SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?")
+        $db->prepare("UPDATE payment_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
             ->execute([$newStatus, $id]);
 
         if ($newStatus === 'Paid') {
             foreach (loadPaymentRequestItems($db, $id) as $item) {
                 if ($item['sap_invoice_id']) {
-                    $db->prepare("UPDATE sap_ap_invoices SET payment_status = 'Paid', updated_at = datetime('now','localtime') WHERE id = ?")
+                    $db->prepare("UPDATE sap_ap_invoices SET payment_status = 'Paid', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
                         ->execute([$item['sap_invoice_id']]);
                 }
             }
         } elseif ($newStatus === 'Pending Documents') {
             foreach (loadPaymentRequestItems($db, $id) as $item) {
                 if ($item['sap_invoice_id']) {
-                    $db->prepare("UPDATE sap_ap_invoices SET payment_status = 'Pending Documents', updated_at = datetime('now','localtime') WHERE id = ?")
+                    $db->prepare("UPDATE sap_ap_invoices SET payment_status = 'Pending Documents', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
                         ->execute([$item['sap_invoice_id']]);
                 }
             }

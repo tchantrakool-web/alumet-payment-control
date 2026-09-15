@@ -121,12 +121,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_req
             request_no, vendor_id, vendor_code, vendor_name,
             total_amount, gross_amount, wht_applicable, wht_rate, wht_base_amount, wht_amount, net_payable,
             due_date, payment_method, status, priority, priority_reason, note,
-            tax_invoice_required, has_po, has_grn, created_by, submitted_at
+            tax_invoice_required, has_po, has_grn, created_by, submitted_at, created_at, updated_at
         ) VALUES (
             ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, datetime('now','localtime')
+            ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
     ");
     $stmtRequest->execute([
@@ -157,8 +157,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_req
     $stmtItem = $db->prepare("
         INSERT INTO payment_request_items (
             payment_request_id, sap_invoice_id, ap_invoice_no, invoice_date,
-            invoice_amount, wht_amount, net_amount, due_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            invoice_amount, wht_amount, net_amount, due_date, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ");
     $remainingWht = $whtAmount;
     $itemCount = count($selectedInvoices);
@@ -186,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $formAction === 'create_payment_req
             $dueDate,
         ]);
 
-        $db->prepare("UPDATE sap_ap_invoices SET payment_status = 'Pending Documents', updated_at = datetime('now','localtime') WHERE id = ?")
+        $db->prepare("UPDATE sap_ap_invoices SET payment_status = 'Pending Documents', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
             ->execute([$invoice['id']]);
     }
 

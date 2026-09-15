@@ -78,12 +78,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect(BASE_URL . '/modules/cheques/');
         }
 
-        $findExisting = $db->prepare("SELECT * FROM cheques WHERE cheque_no=? COLLATE NOCASE LIMIT 1");
+        // Case-insensitive lookup stays a plain SELECT — resolving a vendor's
+        // id by name isn't an insert-or-update decision, just an FK lookup.
         $findVendor = $db->prepare("SELECT id FROM vendors WHERE vendor_name=? COLLATE NOCASE LIMIT 1");
-        $insertCheque = $db->prepare("INSERT INTO cheques
-            (cheque_no, cheque_date, bank, amount, payee_name, vendor_id, status, receiver_name, received_date, created_by, source_type, source_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?, 'finance_import', ?)");
-        $updateCheque = $db->prepare("UPDATE cheques SET cheque_date=?,bank=?,amount=?,payee_name=?,vendor_id=?,status=?,receiver_name=?,received_date=?,source_id=?,updated_at=datetime('now','localtime') WHERE id=?");
+        // The existing-source-type check is a genuine business rule (don't
+        // let a finance sync silently overwrite a manually-created cheque),
+        // not a race-prone existence check — it stays a read. What it used
+        // to gate is a hand-written INSERT-vs-UPDATE branch; that part is
+        // now the single upsert() call below, relying on the UNIQUE index
+        // added in database/migrations/*/001_unique_cheque_no.sql.
+        $findExistingSourceType = $db->prepare("SELECT source_type FROM cheques WHERE cheque_no=? COLLATE NOCASE LIMIT 1");
 
         $created = 0;
         $updated = 0;
@@ -103,25 +107,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $receivedDate = $isReceived ? ($group['received_date'] ?: null) : null;
                 $receiverName = $isReceived ? $payeeName : null;
 
-                $findExisting->execute([$group['cheque_no']]);
-                $existing = $findExisting->fetch();
-                if ($existing && ($existing['source_type'] ?? '') !== 'finance_import') {
+                $findExistingSourceType->execute([$group['cheque_no']]);
+                $existingSourceType = $findExistingSourceType->fetchColumn();
+                $isNew = $existingSourceType === false;
+                if (!$isNew && $existingSourceType !== 'finance_import') {
                     $conflicts++;
                     continue;
                 }
-                if ($existing) {
-                    $updateCheque->execute([
-                        $group['cheque_date'] ?: null, $group['cheque_bank'] ?: null, $group['amount'], $payeeName,
-                        $vendorId, $status, $receiverName, $receivedDate, $batchId, $existing['id'],
-                    ]);
-                    $updated++;
-                } else {
-                    $insertCheque->execute([
-                        $group['cheque_no'], $group['cheque_date'] ?: null, $group['cheque_bank'] ?: null, $group['amount'],
-                        $payeeName, $vendorId, $status, $receiverName, $receivedDate, $user['id'], $batchId,
-                    ]);
-                    $created++;
-                }
+
+                upsert($db, 'cheques', [
+                    'cheque_no' => $group['cheque_no'],
+                    'cheque_date' => $group['cheque_date'] ?: null,
+                    'bank' => $group['cheque_bank'] ?: null,
+                    'amount' => $group['amount'],
+                    'payee_name' => $payeeName,
+                    'vendor_id' => $vendorId,
+                    'status' => $status,
+                    'receiver_name' => $receiverName,
+                    'received_date' => $receivedDate,
+                    'created_by' => $user['id'],
+                    'source_type' => 'finance_import',
+                    'source_id' => $batchId,
+                    'created_at' => sqlNow(),
+                    'updated_at' => sqlNow(),
+                ], ['cheque_no'], ['created_by', 'source_type', 'created_at']);
+
+                $isNew ? $created++ : $updated++;
             }
             $db->commit();
         } catch (Throwable $e) {
@@ -177,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect(BASE_URL . '/modules/cheques/');
         }
 
-        $db->prepare("INSERT INTO cheques (cheque_no, cheque_date, bank, amount, payee_name, payment_request_id, vendor_id, status, created_by) VALUES (?,?,?,?,?,?,?,?,?)")
+        $db->prepare("INSERT INTO cheques (cheque_no, cheque_date, bank, amount, payee_name, payment_request_id, vendor_id, status, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)")
            ->execute([$chequeNo, $chequeDate, $bank, $pr['net_payable'], $pr['vendor_name'], $prId, $pr['vendor_id'], 'prepared', $user['id']]);
         $chequeId = $db->lastInsertId();
         auditLog('CREATE_CHEQUE', 'cheques', $chequeId, '', "cheque_no=$chequeNo amount={$pr['net_payable']}");
@@ -228,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect(BASE_URL . '/modules/cheques/');
         }
 
-        $db->prepare("UPDATE cheques SET status=?, receiver_name=?, received_date=?, void_reason=?, updated_at=datetime('now','localtime') WHERE id=?")
+        $db->prepare("UPDATE cheques SET status=?, receiver_name=?, received_date=?, void_reason=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")
            ->execute([$newStatus, $receiver ?: null, $recvDate ?: null, $voidReason ?: null, $chequeId]);
 
         auditLog('UPDATE_CHEQUE_STATUS', 'cheques', $chequeId, $cheque['status'], $newStatus);

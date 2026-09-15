@@ -1,0 +1,14 @@
+-- See database/migrations/sqlite/001_unique_cheque_no.sql for why this
+-- exists. Case-sensitive (utf8mb4_bin-equivalent exact match on cheque_no's
+-- own values, matching whatever the column's table-level collation already
+-- is) rather than attempting a case-insensitive unique index — this app's
+-- MySQL collation (utf8mb4_unicode_ci from database/schema.mysql.sql) is
+-- already case-insensitive by default, so a plain UNIQUE index here behaves
+-- case-insensitively too, consistent with SQLite's COLLATE NOCASE lookups
+-- that this replaces at the application level.
+--
+-- Before applying to a database that already has cheque data, confirm there
+-- are no existing duplicates:
+--   SELECT cheque_no, COUNT(*) FROM cheques GROUP BY cheque_no HAVING COUNT(*) > 1;
+-- This migration will fail loudly if any are found — resolve them first.
+ALTER TABLE cheques ADD UNIQUE INDEX idx_cheques_cheque_no_unique (cheque_no);

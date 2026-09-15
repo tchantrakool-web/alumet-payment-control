@@ -3,8 +3,8 @@ function auditLog(string $action, string $module, int $recordId = 0, string $old
     try {
         $db   = getDB();
         $user = currentUser();
-        $stmt = $db->prepare("INSERT INTO audit_logs (user_id, username, action, module, record_id, old_value, new_value, ip_address)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $db->prepare("INSERT INTO audit_logs (user_id, username, action, module, record_id, old_value, new_value, ip_address, created_at)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)");
         $stmt->execute([
             $user['id'] ?? 0,
             $user['username'] ?? 'system',

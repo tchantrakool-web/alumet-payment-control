@@ -1,0 +1,13 @@
+-- cheque_no was only ever deduplicated by application code (a COLLATE NOCASE
+-- SELECT before every insert), never by the database. Adding a real
+-- constraint here is what makes upsert()'s ON CONFLICT(cheque_no) valid for
+-- the finance-sync path. COLLATE NOCASE on the index to match the case-
+-- insensitive matching the app already did — verified empirically that a
+-- bare "ON CONFLICT(cheque_no)" correctly resolves against a NOCASE index
+-- without needing to repeat the collation in the conflict target.
+--
+-- Before applying to a database that already has cheque data, confirm there
+-- are no existing duplicates (case-insensitively):
+--   SELECT cheque_no, COUNT(*) FROM cheques GROUP BY cheque_no COLLATE NOCASE HAVING COUNT(*) > 1;
+-- This migration will fail loudly if any are found — resolve them first.
+CREATE UNIQUE INDEX idx_cheques_cheque_no_unique ON cheques(cheque_no COLLATE NOCASE);

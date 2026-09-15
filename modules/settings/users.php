@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $duplicate->execute([$username]);
             if ($duplicate->fetchColumn()) throw new RuntimeException('Username already exists.');
 
-            $stmt = $db->prepare("INSERT INTO users (username, password, full_name, email, role_id, is_active) VALUES (?,?,?,?,?,1)");
+            $stmt = $db->prepare("INSERT INTO users (username, password, full_name, email, role_id, is_active, created_at, updated_at) VALUES (?,?,?,?,?,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
             $stmt->execute([$username, password_hash($password, PASSWORD_DEFAULT), $fullName, $email ?: null, $roleId]);
             $newId = (int)$db->lastInsertId();
             auditLog('CREATE_USER', 'users', $newId, '', json_encode(['username' => $username, 'role' => $role['name']]));
@@ -87,10 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $oldValue = json_encode(['full_name' => $target['full_name'], 'email' => $target['email'], 'role' => $target['role_name'], 'is_active' => (int)$target['is_active']]);
             if ($newPassword !== '') {
-                $db->prepare("UPDATE users SET full_name=?, email=?, role_id=?, is_active=?, password=?, updated_at=datetime('now','localtime') WHERE id=?")
+                $db->prepare("UPDATE users SET full_name=?, email=?, role_id=?, is_active=?, password=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")
                     ->execute([$fullName, $email ?: null, $roleId, $isActive, password_hash($newPassword, PASSWORD_DEFAULT), $userId]);
             } else {
-                $db->prepare("UPDATE users SET full_name=?, email=?, role_id=?, is_active=?, updated_at=datetime('now','localtime') WHERE id=?")
+                $db->prepare("UPDATE users SET full_name=?, email=?, role_id=?, is_active=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")
                     ->execute([$fullName, $email ?: null, $roleId, $isActive, $userId]);
             }
 

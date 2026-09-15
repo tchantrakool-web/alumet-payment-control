@@ -11,7 +11,7 @@
 
 CREATE TABLE schema_migrations (
     migration TEXT PRIMARY KEY,
-    applied_at TEXT DEFAULT (datetime('now','localtime'))
+    applied_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE roles (
@@ -19,7 +19,7 @@ CREATE TABLE roles (
     name TEXT UNIQUE NOT NULL,
     display_name TEXT NOT NULL,
     description TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE users (
@@ -30,8 +30,8 @@ CREATE TABLE users (
     email TEXT,
     role_id INTEGER REFERENCES roles(id),
     is_active INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT (datetime('now','localtime')),
-    updated_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE vendors (
@@ -46,8 +46,8 @@ CREATE TABLE vendors (
     phone TEXT,
     email TEXT,
     is_active INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT (datetime('now','localtime')),
-    updated_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE sap_import_batches (
@@ -59,7 +59,7 @@ CREATE TABLE sap_import_batches (
     error_records INTEGER DEFAULT 0,
     status TEXT DEFAULT 'completed',
     imported_by INTEGER REFERENCES users(id),
-    imported_at TEXT DEFAULT (datetime('now','localtime'))
+    imported_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE sap_ap_invoices (
@@ -80,8 +80,8 @@ CREATE TABLE sap_ap_invoices (
     payment_total REAL DEFAULT 0,
     payment_status TEXT DEFAULT 'Imported',
     is_deleted INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now','localtime')),
-    updated_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE finance_import_batches (
@@ -94,7 +94,7 @@ CREATE TABLE finance_import_batches (
     error_records INTEGER DEFAULT 0,
     status TEXT DEFAULT 'completed',
     imported_by INTEGER REFERENCES users(id),
-    imported_at TEXT DEFAULT (datetime('now','localtime'))
+    imported_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE finance_ap_records (
@@ -117,8 +117,8 @@ CREATE TABLE finance_ap_records (
     cheque_bank TEXT,
     paid_date TEXT,
     source_row INTEGER,
-    created_at TEXT DEFAULT (datetime('now','localtime')),
-    updated_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE payment_requests (
@@ -162,8 +162,8 @@ CREATE TABLE payment_requests (
     checked_at TEXT,
     submitted_at TEXT,
     is_deleted INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now','localtime')),
-    updated_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE payment_request_items (
@@ -177,7 +177,7 @@ CREATE TABLE payment_request_items (
     net_amount REAL DEFAULT 0,
     due_date TEXT,
     remark TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE approval_matrix (
@@ -188,7 +188,7 @@ CREATE TABLE approval_matrix (
     approver_user_id INTEGER REFERENCES users(id),
     sequence INTEGER DEFAULT 1,
     is_active INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE approval_tasks (
@@ -200,7 +200,7 @@ CREATE TABLE approval_tasks (
     action TEXT,
     comment TEXT,
     actioned_at TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE approval_history (
@@ -211,7 +211,7 @@ CREATE TABLE approval_history (
     comment TEXT,
     old_status TEXT,
     new_status TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE payment_batches (
@@ -226,8 +226,8 @@ CREATE TABLE payment_batches (
     created_by INTEGER REFERENCES users(id),
     locked_by INTEGER REFERENCES users(id),
     locked_at TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime')),
-    updated_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE payment_batch_items (
@@ -235,7 +235,7 @@ CREATE TABLE payment_batch_items (
     payment_batch_id INTEGER REFERENCES payment_batches(id),
     payment_request_id INTEGER REFERENCES payment_requests(id),
     amount REAL DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE cheques (
@@ -255,8 +255,8 @@ CREATE TABLE cheques (
     source_type TEXT,
     source_id INTEGER,
     created_by INTEGER REFERENCES users(id),
-    created_at TEXT DEFAULT (datetime('now','localtime')),
-    updated_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE attachments (
@@ -270,7 +270,7 @@ CREATE TABLE attachments (
     document_type TEXT,
     uploaded_by INTEGER REFERENCES users(id),
     is_deleted INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE audit_logs (
@@ -283,7 +283,7 @@ CREATE TABLE audit_logs (
     old_value TEXT,
     new_value TEXT,
     ip_address TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE system_settings (
@@ -292,7 +292,7 @@ CREATE TABLE system_settings (
     setting_value TEXT,
     description TEXT,
     updated_by INTEGER REFERENCES users(id),
-    updated_at TEXT DEFAULT (datetime('now','localtime'))
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE import_error_logs (
@@ -303,7 +303,7 @@ CREATE TABLE import_error_logs (
     field_name TEXT,
     error_message TEXT,
     raw_data TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE notification_logs (
@@ -316,13 +316,13 @@ CREATE TABLE notification_logs (
     body TEXT,
     status TEXT DEFAULT 'pending',
     sent_at TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime'))
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE notification_reads (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     notification_key TEXT NOT NULL,
-    read_at TEXT DEFAULT (datetime('now','localtime')),
+    read_at TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, notification_key)
 );
 

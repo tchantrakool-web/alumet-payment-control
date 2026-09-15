@@ -61,7 +61,7 @@ if (!move_uploaded_file($file['tmp_name'], $savedPath)) {
 
 $user = currentUser();
 
-$db->prepare("INSERT INTO attachments (related_type, related_id, filename, original_filename, file_type, file_size, document_type, uploaded_by) VALUES (?,?,?,?,?,?,?,?)")
+$db->prepare("INSERT INTO attachments (related_type, related_id, filename, original_filename, file_type, file_size, document_type, uploaded_by, created_at) VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)")
    ->execute([$relatedType, $relatedId, $savedName, $file['name'], $file['type'], $file['size'], $docType, $user['id']]);
 
 auditLog('UPLOAD_ATTACHMENT', $relatedType, $relatedId, '', $file['name']);

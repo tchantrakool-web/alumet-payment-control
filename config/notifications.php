@@ -164,10 +164,9 @@ function notificationPayload(PDO $db, array $user, int $limit = 20): array {
 }
 
 function markNotificationRead(PDO $db, int $userId, string $key): void {
-    $stmt = $db->prepare("
-        INSERT INTO notification_reads (user_id, notification_key, read_at)
-        VALUES (?, ?, datetime('now','localtime'))
-        ON CONFLICT(user_id, notification_key) DO UPDATE SET read_at = excluded.read_at
-    ");
-    $stmt->execute([$userId, $key]);
+    upsert($db, 'notification_reads', [
+        'user_id' => $userId,
+        'notification_key' => $key,
+        'read_at' => sqlNow(),
+    ], ['user_id', 'notification_key']);
 }

@@ -34,15 +34,15 @@ function importSapPurchaseFile(
 
     try {
         $db->prepare(
-            "INSERT INTO sap_import_batches (batch_no, filename, status, imported_by)
-             VALUES (?, ?, 'processing', ?)"
+            "INSERT INTO sap_import_batches (batch_no, filename, status, imported_by, imported_at)
+             VALUES (?, ?, 'processing', ?, CURRENT_TIMESTAMP)"
         )->execute([$batchNo, $originalFilename, $userId]);
         $batchId = (int)$db->lastInsertId();
 
         $stmtError = $db->prepare(
             "INSERT INTO import_error_logs
-             (import_batch_id, import_type, row_number, field_name, error_message, raw_data)
-             VALUES (?, 'SAP', ?, ?, ?, ?)"
+             (import_batch_id, import_type, row_number, field_name, error_message, raw_data, created_at)
+             VALUES (?, 'SAP', ?, ?, ?, ?, CURRENT_TIMESTAMP)"
         );
 
         $groups = [];
@@ -327,8 +327,8 @@ function insertSapInvoice(PDO $db, int $batchId, array $record): void {
         'INSERT INTO sap_ap_invoices
          (import_batch_id, vendor_code, vendor_name, po_doc_num, grpo_doc_num, grpo_date, grpo_total,
           ap_invoice_doc_num, ap_invoice_date, ap_invoice_total, ap_paid_amount, ap_balance,
-          payment_doc_num, payment_total, payment_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          payment_doc_num, payment_total, payment_status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
     )->execute(sapInvoiceSqlValues($batchId, $record));
 }
 
@@ -341,7 +341,7 @@ function updateSapInvoice(PDO $db, int $id, int $batchId, array $record): void {
             grpo_doc_num = ?, grpo_date = ?, grpo_total = ?, ap_invoice_doc_num = ?,
             ap_invoice_date = ?, ap_invoice_total = ?, ap_paid_amount = ?, ap_balance = ?,
             payment_doc_num = ?, payment_total = ?, payment_status = ?,
-            is_deleted = 0, updated_at = datetime('now','localtime')
+            is_deleted = 0, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?"
     )->execute($values);
 }
@@ -378,11 +378,10 @@ function upsertSapVendor(PDO $db, string $vendorCode, string $vendorName): void 
     if ($vendorCode === '') {
         return;
     }
-    $db->prepare(
-        "INSERT INTO vendors (vendor_code, vendor_name)
-         VALUES (?, ?)
-         ON CONFLICT(vendor_code) DO UPDATE SET
-            vendor_name = excluded.vendor_name,
-            updated_at = datetime('now','localtime')"
-    )->execute([$vendorCode, $vendorName]);
+    upsert($db, 'vendors', [
+        'vendor_code' => $vendorCode,
+        'vendor_name' => $vendorName,
+        'created_at' => sqlNow(),
+        'updated_at' => sqlNow(),
+    ], ['vendor_code'], ['created_at']);
 }

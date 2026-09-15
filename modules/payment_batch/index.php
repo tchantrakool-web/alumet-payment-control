@@ -49,14 +49,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
     $totalAmt = array_sum(array_column($prs, 'net_payable'));
     $batchNo  = generateNo('PB', 'payment_batches', 'batch_no');
 
-    $db->prepare("INSERT INTO payment_batches (batch_no, batch_date, payment_type, total_amount, status, note, created_by) VALUES (?,?,?,?,?,?,?)")
+    $db->prepare("INSERT INTO payment_batches (batch_no, batch_date, payment_type, total_amount, status, note, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)")
        ->execute([$batchNo, $batchDate, $payType, $totalAmt, 'draft', $note, $user['id']]);
     $batchId = $db->lastInsertId();
 
     foreach ($prs as $pr) {
-        $db->prepare("INSERT INTO payment_batch_items (payment_batch_id, payment_request_id, amount) VALUES (?,?,?)")
+        $db->prepare("INSERT INTO payment_batch_items (payment_batch_id, payment_request_id, amount, created_at) VALUES (?,?,?,CURRENT_TIMESTAMP)")
            ->execute([$batchId, $pr['id'], $pr['net_payable']]);
-        $db->prepare("UPDATE payment_requests SET status='Approved for Payment', updated_at=datetime('now','localtime') WHERE id=?")->execute([$pr['id']]);
+        $db->prepare("UPDATE payment_requests SET status='Approved for Payment', updated_at=CURRENT_TIMESTAMP WHERE id=?")->execute([$pr['id']]);
     }
 
     auditLog('CREATE_BATCH', 'payment_batch', $batchId, '', "total=$totalAmt count=" . count($prs));
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
 // Lock batch
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'lock_batch') {
     $batchId = (int)($_POST['batch_id'] ?? 0);
-    $db->prepare("UPDATE payment_batches SET is_locked=1, status='locked', locked_by=?, locked_at=datetime('now','localtime'), updated_at=datetime('now','localtime') WHERE id=? AND is_locked=0")
+    $db->prepare("UPDATE payment_batches SET is_locked=1, status='locked', locked_by=?, locked_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=? AND is_locked=0")
        ->execute([$user['id'], $batchId]);
     auditLog('LOCK_BATCH', 'payment_batch', $batchId);
     flash('success', 'Batch ถูก Lock แล้ว ไม่สามารถแก้ไขได้');

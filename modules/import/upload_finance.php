@@ -130,18 +130,18 @@ try {
     $db->beginTransaction();
     $batchNo = generateNo('FIN', 'finance_import_batches', 'batch_no');
     $user = currentUser();
-    $db->prepare("INSERT INTO finance_import_batches (batch_no, filename, period, total_records, imported_by, status) VALUES (?,?,?,?,?,'processing')")
+    $db->prepare("INSERT INTO finance_import_batches (batch_no, filename, period, total_records, imported_by, status, imported_at) VALUES (?,?,?,?,?,'processing',CURRENT_TIMESTAMP)")
         ->execute([$batchNo, $safeOriginalName, $period, count($candidateRows), $user['id']]);
     $batchId = (int)$db->lastInsertId();
 
     $stmtRec = $db->prepare("INSERT INTO finance_ap_records
         (import_batch_id, vendor_name, invoice_no, tax_invoice_no, invoice_date, due_date, amount, wht_amount, net_payable,
-         cheque_date, cheque_bank, cheque_no, paid_date, payment_status, remark, source_row)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+         cheque_date, cheque_bank, cheque_no, paid_date, payment_status, remark, source_row, created_at, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
     $stmtErr = $db->prepare("INSERT INTO import_error_logs
-        (import_batch_id, import_type, row_number, field_name, error_message, raw_data) VALUES (?,?,?,?,?,?)");
-    $stmtVendor = $db->prepare("INSERT INTO vendors (vendor_name)
-        SELECT ? WHERE NOT EXISTS (SELECT 1 FROM vendors WHERE vendor_name = ? COLLATE NOCASE)");
+        (import_batch_id, import_type, row_number, field_name, error_message, raw_data, created_at) VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)");
+    $stmtVendor = $db->prepare("INSERT INTO vendors (vendor_name, created_at, updated_at)
+        SELECT ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM vendors WHERE vendor_name = ? COLLATE NOCASE)");
 
     $imported = 0;
     $errors = 0;

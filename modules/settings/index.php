@@ -37,18 +37,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $updated[$key] = trim((string) ($postedSettings[$key] ?? ''));
         }
 
-        $stmt = $db->prepare("
-            INSERT INTO system_settings (setting_key, setting_value, description, updated_by, updated_at)
-            VALUES (?, ?, ?, ?, datetime('now', 'localtime'))
-            ON CONFLICT(setting_key) DO UPDATE SET
-                setting_value = excluded.setting_value,
-                description = excluded.description,
-                updated_by = excluded.updated_by,
-                updated_at = datetime('now', 'localtime')
-        ");
-
         foreach ($generalSettingDefs as $key => $meta) {
-            $stmt->execute([$key, $updated[$key], $meta['description'], $user['id']]);
+            upsert($db, 'system_settings', [
+                'setting_key' => $key,
+                'setting_value' => $updated[$key],
+                'description' => $meta['description'],
+                'updated_by' => $user['id'],
+                'updated_at' => sqlNow(),
+            ], ['setting_key']);
         }
 
         auditLog('UPDATE_SETTINGS', 'settings', 0, json_encode($previous), json_encode($updated));
@@ -75,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $insertStmt = $db->prepare("
                 INSERT INTO approval_matrix (min_amount, max_amount, approver_role, sequence, is_active, created_at)
-                VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ");
 
             foreach ($roles as $idx => $roleName) {
