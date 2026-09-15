@@ -6,11 +6,11 @@ build step. Bilingual UI (Thai/English) via `config/lang.php` + `t()`.
 
 ## State
 
-**Phase 1 (UI/dialog overhaul) — complete.** Full design rationale, options
-rejected, and outcome notes live in the "Insert/Edit dialogs across the app"
-plan document (ask the user for the plan file if picking this up in a new
-session — it's outside this repo, under the user's local Claude plans
-directory).
+**Phase 1 (UI/dialog overhaul) — complete. Phase 2 (bilingual strings) — complete.**
+Full design rationale, options rejected, and outcome notes for both phases live
+in the "Insert/Edit dialogs across the app" plan document (ask the user for the
+plan file if picking this up in a new session — it's outside this repo, under
+the user's local Claude plans directory).
 
 What's in place:
 - **Sidebar navigation** (was a topbar): `layouts/sidebar.php` + `layouts/header.php`,
@@ -55,3 +55,11 @@ Phase 1 that swept up pre-existing, unrelated working-tree changes (SAP
 importer script, notifications API/config, import module edits) alongside the
 UI work. Those files were already modified before Phase 1 started and are not
 described above.
+
+**Phase 2 — bilingual strings:** Phase 1 introduced three new `t()` calls with
+inline English fallback defaults on `payment_requests/detail.php` (`btn.edit`,
+`label.yes`, `label.no`) because those translation keys didn't exist yet. Added
+proper `en`/`th` entries to `config/lang.php` and dropped the inline fallbacks.
+Scope was deliberately limited to that page: `settings/users.php` (and its new
+dialog partials) were never bilingual to begin with — hardcoded English is the
+existing convention there, not a regression — so nothing there needed keys.

@@ -670,7 +670,7 @@ include ROOT_PATH . '/layouts/header.php';
             <span class="rounded bg-emerald-100 px-2 py-1 text-xs text-emerald-700"><?= t('pr.detail.ready') ?></span>
             <?php endif; ?>
             <?php if ($canEditReview): ?>
-            <button type="button" @click="showForm = true" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"><?= t('btn.edit', 'Edit') ?></button>
+            <button type="button" @click="showForm = true" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"><?= t('btn.edit') ?></button>
             <?php endif; ?>
           </div>
         </div>
@@ -692,12 +692,12 @@ include ROOT_PATH . '/layouts/header.php';
 
         <div class="mt-3 grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
           <div><p class="text-xs text-gray-500"><?= t('label.gross_amount') ?></p><p class="font-medium">THB <?= fmtMoney((float)($request['gross_amount'] ?? $request['total_amount'])) ?></p></div>
-          <div><p class="text-xs text-gray-500"><?= t('pr.detail.wht_applicable') ?></p><p class="font-medium"><?= (int)$request['wht_applicable'] === 1 ? t('label.yes', 'Yes') : t('label.no', 'No') ?></p></div>
+          <div><p class="text-xs text-gray-500"><?= t('pr.detail.wht_applicable') ?></p><p class="font-medium"><?= (int)$request['wht_applicable'] === 1 ? t('label.yes') : t('label.no') ?></p></div>
           <div><p class="text-xs text-gray-500"><?= t('label.wht_rate') ?></p><p class="font-medium"><?= (float)$request['wht_rate'] > 0 ? rtrim(rtrim(number_format((float)$request['wht_rate'], 2), '0'), '.') . '%' : '-' ?></p></div>
           <div><p class="text-xs text-gray-500"><?= t('label.wht_base') ?></p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_base_amount']) ?></p></div>
           <div><p class="text-xs text-gray-500"><?= t('label.wht_amount') ?></p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_amount']) ?></p></div>
           <div><p class="text-xs text-gray-500"><?= t('label.net_payable') ?></p><p class="font-medium text-emerald-700">THB <?= fmtMoney((float)$request['net_payable']) ?></p></div>
-          <div><p class="text-xs text-gray-500"><?= t('pr.detail.tax_req_checkbox') ?></p><p class="font-medium"><?= (int)$request['tax_invoice_required'] === 1 ? t('label.yes', 'Yes') : t('label.no', 'No') ?></p></div>
+          <div><p class="text-xs text-gray-500"><?= t('pr.detail.tax_req_checkbox') ?></p><p class="font-medium"><?= (int)$request['tax_invoice_required'] === 1 ? t('label.yes') : t('label.no') ?></p></div>
         </div>
 
         <?php if ((string)$request['note'] !== ''): ?>
