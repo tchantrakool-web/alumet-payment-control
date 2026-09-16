@@ -19,15 +19,25 @@
   [x-cloak]{display:none!important}
   html{background:#eef4f1}
   body{font-family:'Sarabun','Segoe UI',system-ui,sans-serif;background:radial-gradient(circle at top left,rgba(164,214,94,.18),transparent 22%),linear-gradient(180deg,#f8fbf8 0%,#eef4f1 100%);color:var(--brand-ink)}
-  .sidebar-link{display:flex;align-items:center;gap:.65rem;padding:.62rem .75rem;border-radius:.65rem;color:#d9e8e2;font-size:.82rem;font-weight:600;white-space:nowrap;transition:background-color .18s,color .18s}
-  .sidebar-link:hover{background:rgba(255,255,255,.1);color:#fff}
-  .sidebar-link.active{background:rgba(164,214,94,.2);color:#fff;box-shadow:inset 0 0 0 1px rgba(164,214,94,.3)}
-  .sidebar-icon{display:inline-flex;align-items:center;justify-content:center;width:1.6rem;height:1.6rem;border-radius:.5rem;background:rgba(255,255,255,.12);flex:0 0 auto}
-  .sidebar-section-label{padding:.3rem .75rem;color:rgba(255,255,255,.55);font-size:.66rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+  .sidebar-group{--sidebar-tone:#475569;--sidebar-soft:#f1f5f9;--sidebar-border:#dbe3ea;background:rgba(255,255,255,.88);border:1px solid var(--sidebar-border);border-left:3px solid var(--sidebar-tone);border-radius:.75rem;padding:.38rem;box-shadow:0 1px 2px rgba(15,23,42,.035)}
+  .sidebar-group--dashboard{--sidebar-tone:#0f766e;--sidebar-soft:#ecfdf5;--sidebar-border:#d4ebe4}
+  .sidebar-group--maker{--sidebar-tone:#0369a1;--sidebar-soft:#eef8ff;--sidebar-border:#cfe7f4}
+  .sidebar-group--checker{--sidebar-tone:#b45309;--sidebar-soft:#fff8e8;--sidebar-border:#f2dfb4}
+  .sidebar-group--approver{--sidebar-tone:#047857;--sidebar-soft:#ecfdf5;--sidebar-border:#cde9dc}
+  .sidebar-group--monitoring{--sidebar-tone:#475569;--sidebar-soft:#f1f5f9;--sidebar-border:#dbe3ea}
+  .sidebar-group--admin{--sidebar-tone:#6d28d9;--sidebar-soft:#f5f3ff;--sidebar-border:#ded7f4}
+  .sidebar-link{display:flex;align-items:center;gap:.65rem;padding:.5rem .6rem;border-radius:.55rem;color:#334155;font-size:.82rem;font-weight:600;white-space:nowrap;transition:background-color .18s,color .18s,box-shadow .18s}
+  .sidebar-link:hover{background:var(--sidebar-soft);color:var(--sidebar-tone)}
+  .sidebar-link.active{background:var(--sidebar-soft);color:var(--sidebar-tone);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--sidebar-tone) 24%,transparent)}
+  .sidebar-icon{display:inline-flex;align-items:center;justify-content:center;width:1.65rem;height:1.65rem;border-radius:.48rem;background:var(--sidebar-soft);color:var(--sidebar-tone);flex:0 0 auto}
+  .sidebar-link.active .sidebar-icon{background:var(--sidebar-tone);color:#fff}
+  .sidebar-section-label{display:flex;align-items:center;gap:.42rem;padding:.25rem .55rem;color:#334155;font-size:.69rem;font-weight:800;letter-spacing:.035em;line-height:1.2}
+  .sidebar-section-label small{margin-left:auto;color:var(--sidebar-tone);font-size:.58rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+  .sidebar-section-marker{width:.42rem;height:.42rem;border-radius:999px;background:var(--sidebar-tone);box-shadow:0 0 0 3px var(--sidebar-soft);flex:0 0 auto}
   .nav-bilingual{display:flex;flex-direction:column;line-height:1.05;gap:.16rem}
-  .nav-bilingual small{font-size:.65rem;font-weight:500;opacity:.7;letter-spacing:.01em}
+  .nav-bilingual small{font-size:.65rem;font-weight:500;color:#64748b;letter-spacing:.01em}
   .sidebar-scroll::-webkit-scrollbar{width:6px}
-  .sidebar-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:99px}
+  .sidebar-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
   .theme-input:focus{outline:none;border-color:var(--brand-primary);box-shadow:0 0 0 3px rgba(0,107,63,.15)}
   .theme-btn-primary{background:var(--brand-primary);color:#fff}.theme-btn-primary:hover{background:#005432}
   .theme-btn-secondary{background:var(--brand-secondary);color:#fff}.theme-btn-secondary:hover{background:#032f49}
@@ -120,36 +130,35 @@ function notificationBell() {
 <body class="min-h-screen" x-data="{ mobileNavOpen: false }" @keydown.escape.window="mobileNavOpen = false">
 
 <aside
-  class="fixed inset-y-0 left-0 z-50 w-72 flex flex-col text-white shadow-xl transform transition-transform duration-200 ease-out lg:translate-x-0"
+  class="fixed inset-y-0 left-0 z-50 w-72 flex flex-col border-r border-slate-200 bg-[#f5f8f7] text-slate-800 shadow-[8px_0_30px_rgba(15,23,42,.08)] transform transition-transform duration-200 ease-out lg:translate-x-0"
   :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
-  style="background:linear-gradient(180deg,#003B5C 0%,#0A536F 55%,#006B3F 100%);"
   aria-label="Sidebar navigation"
 >
-  <div class="h-16 px-4 flex items-center gap-3 border-b border-white/10 shrink-0">
+  <div class="h-16 px-4 flex items-center gap-3 border-b border-slate-200 bg-white shrink-0">
     <a href="<?= BASE_URL ?>/dashboard.php" class="flex items-center gap-3 min-w-0">
-      <img src="<?= BASE_URL ?>/uploads/branding/alumet-logo.jpg" alt="Alumet" class="h-9 w-auto rounded-md bg-white px-2 py-1 shadow-sm">
+      <img src="<?= BASE_URL ?>/uploads/branding/alumet-logo.jpg" alt="Alumet" class="h-9 w-auto rounded-md border border-slate-200 bg-white px-2 py-1">
       <div class="min-w-0">
-        <div class="font-bold text-sm leading-none truncate">Payment Control Tower</div>
-        <div class="text-[11px] truncate mt-1" style="color:#B8D4C4;"><?= h(getSetting('company_name', 'Alumet Co., Ltd.')) ?></div>
+        <div class="font-bold text-sm leading-none text-[#003B5C] truncate">Payment Control Tower</div>
+        <div class="text-[11px] text-slate-500 truncate mt-1"><?= h(getSetting('company_name', 'Alumet Co., Ltd.')) ?></div>
       </div>
     </a>
-    <button type="button" @click="mobileNavOpen = false" class="ml-auto p-1.5 rounded-lg hover:bg-white/10 transition-colors lg:hidden" aria-label="Close navigation">
+    <button type="button" @click="mobileNavOpen = false" class="ml-auto p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors lg:hidden" aria-label="Close navigation">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"/></svg>
     </button>
   </div>
 
   <?php include ROOT_PATH . '/layouts/sidebar.php'; ?>
 
-  <div class="border-t border-white/10 p-3 shrink-0 space-y-2">
+  <div class="border-t border-slate-200 bg-white p-3 shrink-0 space-y-2">
     <div class="flex items-center gap-2 px-1">
       <div class="min-w-0 flex-1">
-        <div class="text-sm font-semibold truncate"><?= h(currentUser()['full_name'] ?? '') ?></div>
-        <div class="text-[11px] truncate" style="color:#B8D4C4;"><?= h($_SESSION['role_name'] ?? '') ?></div>
+        <div class="text-sm font-semibold text-slate-800 truncate"><?= h(currentUser()['full_name'] ?? '') ?></div>
+        <div class="text-[11px] text-slate-500 truncate"><?= h($_SESSION['role_name'] ?? '') ?></div>
       </div>
       <?php $currentLang = defined('APP_LANG') ? APP_LANG : 'en'; ?>
-      <a href="?lang=<?= $currentLang === 'en' ? 'th' : 'en' ?>" class="shrink-0 text-xs px-2.5 py-1.5 rounded-md border border-white/20 hover:bg-white/10 transition-colors" title="Switch language"><?= $currentLang === 'en' ? 'TH' : 'EN' ?></a>
+      <a href="?lang=<?= $currentLang === 'en' ? 'th' : 'en' ?>" class="shrink-0 text-xs font-semibold text-slate-600 px-2.5 py-1.5 rounded-md border border-slate-200 hover:bg-slate-100 transition-colors" title="Switch language"><?= $currentLang === 'en' ? 'TH' : 'EN' ?></a>
     </div>
-    <a href="<?= BASE_URL ?>/logout.php" class="flex items-center justify-center gap-2 text-sm px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10 transition-colors" style="color:#D8E7E1;">
+    <a href="<?= BASE_URL ?>/logout.php" class="flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 transition-colors">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"/></svg>
       <?= t('auth.logout') ?>
     </a>

@@ -11,12 +11,14 @@ $biNav = static function (string $key) use ($menuTranslations): array {
 
 $navGroups = [
     [
+        'tone' => 'dashboard',
         'label' => $biNav('nav.section.dashboard'),
         'items' => canAccess('dashboard') ? [
             [BASE_URL . '/dashboard.php', 'dashboard', $biNav('nav.dashboard'), '', 'dashboard.php'],
         ] : [],
     ],
     [
+        'tone' => 'maker',
         'label' => $biNav('nav.section.maker'),
         'items' => array_values(array_filter([
             canAccess('import') ? [BASE_URL . '/modules/import/', 'import', $biNav('nav.import'), 'import', ''] : null,
@@ -25,6 +27,7 @@ $navGroups = [
         ])),
     ],
     [
+        'tone' => 'checker',
         'label' => $biNav('nav.section.checker'),
         'items' => array_values(array_filter([
             canAccess('payment_requests') ? [BASE_URL . '/modules/payment_requests/', 'payment_requests', $biNav('nav.review_requests'), 'payment_requests', ''] : null,
@@ -32,6 +35,7 @@ $navGroups = [
         ])),
     ],
     [
+        'tone' => 'approver',
         'label' => $biNav('nav.section.approver'),
         'items' => array_values(array_filter([
             canAccess('approval') ? [BASE_URL . '/modules/approval/', 'approval', $biNav('nav.approve_requests'), 'approval', ''] : null,
@@ -39,6 +43,7 @@ $navGroups = [
         ])),
     ],
     [
+        'tone' => 'monitoring',
         'label' => $biNav('nav.section.monitoring'),
         'items' => array_values(array_filter([
             canAccess('payment_batch') ? [BASE_URL . '/modules/payment_batch/', 'payment_batch', $biNav('nav.payment_batch'), 'payment_batch', ''] : null,
@@ -49,6 +54,7 @@ $navGroups = [
         ])),
     ],
     [
+        'tone' => 'admin',
         'label' => $biNav('nav.section.admin'),
         'items' => canAccess('settings') ? [
             [BASE_URL . '/modules/settings/', 'settings', $biNav('nav.settings'), 'settings', ''],
@@ -81,11 +87,15 @@ $navItemActive = static function (array $item, string $curDir, string $curFile):
 };
 ?>
 
-<nav class="sidebar-scroll flex-1 overflow-y-auto px-3 py-4 space-y-5" aria-label="Main navigation">
+<nav class="sidebar-scroll flex-1 overflow-y-auto px-3 py-3 space-y-2.5" aria-label="Main navigation">
   <?php foreach ($navGroups as $group): ?>
-    <div>
-      <div class="sidebar-section-label"><span><?= h($group['label']['th']) ?></span> · <span><?= h($group['label']['en']) ?></span></div>
-      <div class="mt-1.5 space-y-0.5">
+    <section class="sidebar-group sidebar-group--<?= h($group['tone']) ?>">
+      <div class="sidebar-section-label">
+        <span class="sidebar-section-marker" aria-hidden="true"></span>
+        <span><?= h($group['label']['th']) ?></span>
+        <small><?= h($group['label']['en']) ?></small>
+      </div>
+      <div class="mt-1 space-y-0.5">
         <?php foreach ($group['items'] as $item): ?>
           <a href="<?= h($item[0]) ?>" class="sidebar-link <?= $navItemActive($item, $dir, $cur) ? 'active' : '' ?>" @click="mobileNavOpen = false">
             <span class="sidebar-icon">
@@ -95,6 +105,6 @@ $navItemActive = static function (array $item, string $curDir, string $curFile):
           </a>
         <?php endforeach; ?>
       </div>
-    </div>
+    </section>
   <?php endforeach; ?>
 </nav>
