@@ -8,7 +8,7 @@ if (!canAccess('bpmn')) {
 }
 
 $pageTitle = 'BPMN Workflow';
-$workflowAssetVersion = '20260609-4';
+$workflowAssetVersion = '20260916-1';
 
 include ROOT_PATH . '/layouts/header.php';
 ?>

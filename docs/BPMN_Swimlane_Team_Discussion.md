@@ -1,213 +1,76 @@
-# Alumet Payment Control Tower
-## BPMN Swimlane Workflow For Team Discussion
+# AP Payment Control — Team Workflow Discussion
 
-This version is prepared for business discussion with Procurement, Accounting, Finance, and Management.
+เอกสารสำหรับทบทวนร่วมกันโดยใช้ state machine ชุดเดียวกับโปรแกรม ไม่สร้าง business flow แยกจากระบบ
 
-## Visual Workflow
+> **Source of Truth:** transition handlers ใน `modules/payment_requests/detail.php`
+>
+> **Canonical specification:** [BPMN_Swimlane.md](BPMN_Swimlane.md)
+>
+> **Visuals:** [Detailed workflow](assets/mvp-workflow-swimlane.svg) และ [Executive workflow](assets/mvp-workflow-executive-th.svg)
 
-Open the swimlane image directly from the project:
-
-![MVP Payment Workflow](assets/mvp-workflow-swimlane.svg?v=20260609-4)
-
-![Executive Workflow](assets/mvp-workflow-executive-th.svg?v=20260609-4)
-
-Reference file:
-- [mvp-workflow-swimlane.svg](/c:/xampp/htdocs/Alumet/alumet-payment-control/docs/assets/mvp-workflow-swimlane.svg)
-- [mvp-workflow-executive-th.svg](/c:/xampp/htdocs/Alumet/alumet-payment-control/docs/assets/mvp-workflow-executive-th.svg)
-
-## 1. Objective
-
-Use this workflow to align on:
-
-- who is responsible in each step
-- which documents are mandatory
-- where a request can be returned for correction
-- when approval is required
-- when payment can be executed and closed
-
-## 2. Proposed Swimlanes
-
-- `Procurement`
-- `Accounting / AP`
-- `Finance Review`
-- `Management Approver`
-- `Finance Payment`
-- `System`
-
-## 3. End-to-End Workflow
+## State machine ที่ใช้ในการประชุม
 
 ```mermaid
-flowchart LR
-    subgraph P["Procurement"]
-        P1[Prepare PO]
-        P2[Prepare GRN or GRPO]
-        P3[Receive Vendor Invoice]
-        P4[Upload or hand over supporting documents]
-        P5[Correct missing or incorrect documents]
-    end
+stateDiagram-v2
+    [*] --> Pending_Documents: Create from AP Invoice Queue
+    Pending_Documents --> Pending_Accounting_Review: Maker submits documents
+    Pending_Accounting_Review --> Pending_Finance_Review: Maker submits to Finance
+    Pending_Finance_Review --> Pending_Management_Approval: Checker marks Document Complete\nSystem creates approval tasks
+    Pending_Management_Approval --> Pending_Management_Approval: Approve active task\nmore tasks remain
+    Pending_Management_Approval --> Approved_for_Payment: All tasks approved
+    Approved_for_Payment --> Paid: Payment details + Payment Proof
 
-    subgraph A["Accounting / AP"]
-        A1[Select unpaid SAP AP invoices]
-        A2[Create Payment Request]
-        A3[Check vendor and invoice grouping]
-        A4[Verify 3-way match PO GRN Invoice]
-        A5[Review tax invoice requirement]
-        A6[Calculate WHT gross and net payable]
-        A7{Documents and accounting data complete?}
-        A8[Submit to Finance Review]
-        A9[Revise accounting data]
-    end
+    Pending_Accounting_Review --> Returned_for_Correction: Return
+    Pending_Finance_Review --> Returned_for_Correction: Return
+    Pending_Management_Approval --> Returned_for_Correction: Active approver returns
+    Returned_for_Correction --> Pending_Documents: Resubmit with checklist errors
+    Returned_for_Correction --> Pending_Accounting_Review: Resubmit with complete checklist
 
-    subgraph F["Finance Review"]
-        F1[Review due date payment method and cash readiness]
-        F2{Ready for approval?}
-        F3[Send to Management Approval]
-        F4[Return for correction]
-        F5[Reject request]
-    end
-
-    subgraph M["Management Approver"]
-        M1[Review amount purpose and supporting documents]
-        M2{Approve?}
-        M3[Approve for Payment]
-        M4[Return for correction]
-        M5[Reject request]
-    end
-
-    subgraph FP["Finance Payment"]
-        FP1[Create payment batch]
-        FP2[Prepare cheque or bank transfer]
-        FP3[Execute payment]
-        FP4[Upload payment proof]
-        FP5[Record payment reference bank payer and payment date]
-        FP6[Close request as Paid]
-    end
-
-    subgraph S["System"]
-        S1[Create Payment Request status Pending Documents]
-        S2[Set status Pending Accounting Review]
-        S3[Set status Pending Finance Review]
-        S4[Create approval tasks from approval matrix]
-        S5[Set status Pending Management Approval]
-        S6[Set status Returned for Correction]
-        S7[Set status Rejected]
-        S8[Set status Approved for Payment]
-        S9[Set status Paid]
-        S10[Update SAP invoice payment status]
-        S11[Write audit trail]
-    end
-
-    P1 --> P2 --> P3 --> P4
-    P4 --> A1
-    A1 --> A2 --> A3 --> A4 --> A5 --> A6 --> A7
-    A2 --> S1
-    A7 -- Yes --> A8
-    A8 --> S2
-    S2 --> S3
-    S3 --> F1
-
-    A7 -- No --> A9
-    A9 --> S6
-    S6 --> P5
-    P5 --> P4
-
-    F1 --> F2
-    F2 -- Yes --> F3
-    F3 --> S4
-    S4 --> S5
-    S5 --> M1
-    F2 -- Return --> F4
-    F4 --> S6
-    F2 -- Reject --> F5
-    F5 --> S7
-
-    M1 --> M2
-    M2 -- Approve --> M3
-    M3 --> S8
-    M2 -- Return --> M4
-    M4 --> S6
-    M2 -- Reject --> M5
-    M5 --> S7
-
-    S8 --> FP1 --> FP2 --> FP3 --> FP4 --> FP5 --> FP6
-    FP6 --> S9
-    S9 --> S10
-
-    A2 -.-> S11
-    A8 -.-> S11
-    F3 -.-> S11
-    F4 -.-> S11
-    F5 -.-> S11
-    M3 -.-> S11
-    M4 -.-> S11
-    M5 -.-> S11
-    FP6 -.-> S11
+    Pending_Accounting_Review --> Rejected: Reject
+    Pending_Finance_Review --> Rejected: Reject
+    Pending_Management_Approval --> Rejected: Active approver rejects
+    Paid --> [*]
+    Rejected --> [*]
 ```
 
-## 4. Status Lifecycle
+## Ownership by stage
 
-```text
-Pending Documents
--> Pending Accounting Review
--> Pending Finance Review
--> Pending Management Approval
--> Approved for Payment
--> Paid
+| Stage | Owner | Entry state | Exit state / result |
+|---|---|---|---|
+| Create and prepare | Maker | AP Invoice Queue | Pending Documents |
+| Submit documents | Maker | Pending Documents | Pending Accounting Review |
+| Submit to Finance | Maker | Pending Accounting Review | Pending Finance Review |
+| Document validation | Checker | Pending Finance Review | Pending Management Approval, Returned for Correction หรือ Rejected |
+| Sequential approval | Assigned Finance Manager / Approver / Executive | Pending Management Approval | task ถัดไป, Approved for Payment, Returned for Correction หรือ Rejected |
+| Payment execution | Finance Manager | Approved for Payment | Paid |
+| Correction | Maker | Returned for Correction | Pending Documents หรือ Pending Accounting Review |
 
-Alternative:
-Pending Finance Review or Pending Management Approval
--> Returned for Correction
--> Pending Documents or Pending Accounting Review
+## Control points ที่ทีมต้องยืนยัน
 
-Alternative:
-Pending Finance Review or Pending Management Approval
--> Rejected
-```
+1. **Separation of Duties** — Maker เตรียมรายการ, Checker ตรวจเอกสาร, ผู้อนุมัติทำงานตาม task, Finance Manager ปิดการจ่าย
+2. **Document gate** — Checker เลือก Document Complete ได้เมื่อ PO, Invoice, GR เป็น Accepted มีวิธีจ่าย และ checklist ผ่าน
+3. **Sequential approval** — ผู้อนุมัติทำได้เฉพาะ active task; ระบบยังคง `Pending Management Approval` จน task สุดท้ายอนุมัติ
+4. **Return behavior** — Return ต้องมีเหตุผล; Maker เป็นผู้แก้และ Resubmit; checklist เป็นตัวกำหนดว่าจะกลับ `Pending Documents` หรือ `Pending Accounting Review`
+5. **Reject behavior** — Reject จากขั้น Accounting, Finance Review หรือ active approval จบที่ `Rejected` และไม่เข้าสู่ขั้นจ่าย
+6. **Payment evidence** — `Mark Paid` ต้องมี payment date, reference, bank, payer และ `Payment Proof`
+7. **Optional preparation** — Payment Batch และ Cheque Register ช่วยเตรียมจ่าย แต่ไม่ใช่ state บังคับก่อน `Paid`
+8. **Auditability** — ทุก transition, comment, task decision และการจ่ายต้องตรวจสอบย้อนหลังได้
 
-## 5. Mandatory Documents
+## Approval route ที่โปรแกรมสร้าง
 
-- `PO`
-- `GRN / GRPO`
-- `Vendor Invoice`
-- `Tax Invoice` when tax invoice is required
-- `Payment Proof` before closing as `Paid`
+| Amount (THB) | Sequential approvers |
+|---:|---|
+| 0 – 100,000 | Finance Manager |
+| 100,000.01 – 500,000 | Finance Manager → Approver |
+| 500,000.01 – 2,000,000 | Approver → Executive |
+| มากกว่า 2,000,000 | Executive |
 
-## 6. Key Control Points
+## Decisions for the team
 
-- One Payment Request should contain invoices from one vendor only.
-- Accounting should complete 3-way match before sending to Finance Review.
-- If WHT is applicable, the request must include:
-  - WHT applicable flag
-  - WHT rate
-  - WHT base amount
-  - WHT amount
-- Finance cannot send the request to approval if mandatory documents are missing.
-- Management approval should follow the approval matrix by amount.
-- Finance should not mark the request as `Paid` without payment date, payment reference, bank or channel, payer name, and payment proof.
+- ผู้ใช้งานแต่ละ Module ถูก assign เป็น Maker, Checker, Approver, Finance Manager หรือ Executive ถูกต้องหรือไม่
+- `return_to` ที่หน้าจอให้เลือกสอดคล้องกับเจ้าของงานจริงหรือควรจำกัดให้ตรง role มากขึ้น
+- ต้องเพิ่ม transition เข้าสู่ cheque status `signed` ใน UI หรือคงไว้เป็นสถานะรองรับเท่านั้น
+- Approval matrix ตามวงเงินข้างต้นตรงกับนโยบายล่าสุดหรือไม่
+- ต้องบังคับ Payment Batch สำหรับ payment method บางประเภทในอนาคตหรือไม่ (ปัจจุบันไม่บังคับ)
 
-## 7. Discussion Questions For Team Workshop
-
-Use these questions during the meeting:
-
-1. Should Procurement upload documents directly in the system, or should Accounting upload after receiving them?
-2. Is `Pending Documents` owned by Procurement or by Accounting?
-3. At what amount thresholds should Management approval be required?
-4. Should Finance Manager be allowed to approve in place of Management in specific cases?
-5. What are the exact return reasons that should become standard options?
-6. Which payment methods are allowed in MVP:
-   - cheque
-   - bank transfer
-   - cash
-7. Should one PR allow multiple invoices for one vendor only, or also one invoice per PR in some scenarios?
-8. Do we need a separate step for tax validation before Finance Review?
-
-## 8. Suggested Meeting Output
-
-At the end of the workshop, the team should agree on:
-
-- final swimlanes and role ownership
-- final mandatory document list
-- return and reject rules
-- approval thresholds
-- payment completion evidence required
-- scope changes for next MVP phase
+เมื่อทีมตัดสินใจเปลี่ยน workflow ให้แก้ handler/validation ในโปรแกรมก่อน แล้วอัปเดต [canonical specification](BPMN_Swimlane.md) และ SVG ทั้งสองใน commit เดียวกัน เพื่อไม่ให้เอกสารกับระบบแยกกันอีก
