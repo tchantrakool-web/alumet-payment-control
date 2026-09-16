@@ -138,15 +138,15 @@ include ROOT_PATH . '/layouts/header.php';
   <form id="selectInvoicesForm" method="POST" action="<?= BASE_URL ?>/modules/payment_requests/create.php">
   <?php endif; ?>
   <div class="bg-white rounded-xl border overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full table-fixed text-[11px] leading-tight">
+    <div id="apInvoiceTableScroll" class="ap-invoice-scroll max-h-[60vh] overflow-auto overscroll-contain">
+      <table class="w-full min-w-[1280px] table-fixed text-[11px] leading-tight">
         <colgroup>
           <?php if (hasRole('admin', 'maker', 'finance_manager')): ?><col style="width:3%"> <?php endif; ?>
           <col style="width:8%"><col style="width:18%"><col style="width:9%"><col style="width:8%">
           <col style="width:11%"><col style="width:12%"><col style="width:9%"><col style="width:7%">
           <col style="width:9%"><col style="width:6%">
         </colgroup>
-        <thead>
+        <thead class="sticky top-0 z-10">
           <tr class="bg-gray-50 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-normal border-b">
             <?php if (hasRole('admin', 'maker', 'finance_manager')): ?>
             <th class="px-1 py-2.5 text-center">

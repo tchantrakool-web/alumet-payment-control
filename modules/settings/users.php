@@ -137,10 +137,75 @@ $roles = $db->query('SELECT id, name, display_name, description FROM roles ORDER
 $users = $db->query("SELECT u.id,u.username,u.full_name,u.email,u.role_id,u.is_active,u.created_at,u.updated_at,r.name AS role_name,r.display_name AS role_display FROM users u LEFT JOIN roles r ON r.id=u.role_id ORDER BY u.is_active DESC,u.full_name,u.username")->fetchAll();
 $activeUsers = count(array_filter($users, static fn($user): bool => (int)$user['is_active'] === 1));
 
+$roleSections = [
+    'maker' => [
+        'label' => 'Maker',
+        'thai' => 'ผู้จัดทำ',
+        'description' => 'จัดเตรียมข้อมูล นำเข้า Invoice และสร้างคำขอชำระเงิน',
+        'accent' => 'border-sky-600',
+        'soft' => 'bg-sky-50',
+        'text' => 'text-sky-700',
+        'primary' => true,
+    ],
+    'checker' => [
+        'label' => 'Checker',
+        'thai' => 'ผู้ตรวจสอบ',
+        'description' => 'ตรวจสอบเอกสารและความถูกต้องก่อนส่งอนุมัติ',
+        'accent' => 'border-amber-600',
+        'soft' => 'bg-amber-50',
+        'text' => 'text-amber-700',
+        'primary' => true,
+    ],
+    'approver' => [
+        'label' => 'Approver',
+        'thai' => 'ผู้อนุมัติ',
+        'description' => 'พิจารณาและอนุมัติคำขอชำระเงินตามวงเงิน',
+        'accent' => 'border-emerald-600',
+        'soft' => 'bg-emerald-50',
+        'text' => 'text-emerald-700',
+        'primary' => true,
+    ],
+    'finance_manager' => [
+        'label' => 'Finance Manager',
+        'thai' => 'ผู้จัดการการเงิน',
+        'description' => 'ควบคุมชุดการชำระเงิน เช็ค และภาพรวมกระแสเงินสด',
+        'accent' => 'border-teal-700',
+        'soft' => 'bg-teal-50',
+        'text' => 'text-teal-700',
+        'primary' => false,
+    ],
+    'executive' => [
+        'label' => 'Executive',
+        'thai' => 'ผู้บริหาร',
+        'description' => 'อนุมัติรายการวงเงินสูงและติดตามภาพรวมผู้บริหาร',
+        'accent' => 'border-violet-600',
+        'soft' => 'bg-violet-50',
+        'text' => 'text-violet-700',
+        'primary' => false,
+    ],
+    'admin' => [
+        'label' => 'Administrator',
+        'thai' => 'ผู้ดูแลระบบ',
+        'description' => 'จัดการผู้ใช้ สิทธิ์การเข้าถึง และการตั้งค่าระบบ',
+        'accent' => 'border-slate-600',
+        'soft' => 'bg-slate-50',
+        'text' => 'text-slate-700',
+        'primary' => false,
+    ],
+];
+
+$usersByRole = array_fill_keys(array_keys($roleSections), []);
+foreach ($users as $managedUser) {
+    $roleName = (string)($managedUser['role_name'] ?? '');
+    if (isset($usersByRole[$roleName])) {
+        $usersByRole[$roleName][] = $managedUser;
+    }
+}
+
 include ROOT_PATH . '/layouts/header.php';
 ?>
 
-<div x-data="{ showForm: false, editing: null, open: {}, closeAll() { this.showForm = false; this.open = {}; } }">
+<div x-data="{ showForm: false, editing: { username: '', full_name: '', email: '', role_id: '', password: '', password_confirmation: '' }, open: {}, closeAll() { this.showForm = false; this.open = {}; } }">
 
   <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
     <div>
@@ -163,47 +228,91 @@ include ROOT_PATH . '/layouts/header.php';
 
   <?php if (!$canManageUsers): ?><div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">View-only access: user accounts can only be changed by an administrator.</div><?php endif; ?>
 
-  <div class="rounded-xl border bg-white overflow-hidden">
-    <div class="border-b px-5 py-4"><h2 class="text-lg font-semibold text-gray-800">User Accounts</h2></div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead><tr class="border-b bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500"><th class="px-4 py-3">Account</th><th class="px-4 py-3">Full Name</th><th class="px-4 py-3">Email</th><th class="px-4 py-3">Role</th><th class="px-4 py-3">Active</th><th class="px-4 py-3"></th></tr></thead>
-        <tbody>
-        <?php foreach ($users as $managedUser): $isSelf = (int)$managedUser['id'] === (int)$currentUser['id']; ?>
-          <tr class="border-b last:border-0 align-top <?= (int)$managedUser['is_active'] === 0 ? 'bg-gray-50 opacity-75' : '' ?>">
-            <td class="px-4 py-3">
-              <div class="font-mono font-semibold text-gray-800"><?= h($managedUser['username']) ?></div>
-              <div class="mt-1 text-xs text-gray-400">Created <?= fmtDate($managedUser['created_at']) ?><?= $isSelf ? ' · You' : '' ?></div>
-            </td>
-            <td class="px-4 py-3"><?= h($managedUser['full_name']) ?></td>
-            <td class="px-4 py-3"><?= h((string)($managedUser['email'] ?: '-')) ?></td>
-            <td class="px-4 py-3"><?= h($managedUser['role_display'] ?? '') ?></td>
-            <td class="px-4 py-3">
-              <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium <?= (int)$managedUser['is_active'] === 1 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600' ?>">
-                <?= (int)$managedUser['is_active'] === 1 ? 'Active' : 'Inactive' ?>
-              </span>
-            </td>
-            <td class="px-4 py-3">
-              <?php if ($canManageUsers): ?>
-              <div class="flex items-center gap-2 whitespace-nowrap">
-                <button type="button" @click="closeAll(); open[<?= (int)$managedUser['id'] ?>] = true"
-                        class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">Edit</button>
-                <?php if (!$isSelf): ?>
-                  <form method="POST" onsubmit="return confirm('Remove this user permanently? This action cannot be undone.');">
-                    <?= csrfField() ?>
-                    <input type="hidden" name="action" value="delete_user">
-                    <input type="hidden" name="user_id" value="<?= (int)$managedUser['id'] ?>">
-                    <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100">Remove</button>
-                  </form>
-                <?php endif; ?>
-              </div>
-              <?php else: ?><span class="text-xs font-medium text-gray-400">View only</span><?php endif; ?>
-            </td>
-          </tr>
-        <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
+  <div class="mb-5 grid gap-3 md:grid-cols-3">
+    <?php foreach ($roleSections as $roleName => $section): if (!$section['primary']) continue;
+      $sectionUsers = $usersByRole[$roleName];
+      $sectionActive = count(array_filter($sectionUsers, static fn($user): bool => (int)$user['is_active'] === 1));
+    ?>
+    <a href="#role-<?= h($roleName) ?>" class="rounded-xl border border-l-4 <?= h($section['accent']) ?> <?= h($section['soft']) ?> p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="font-bold <?= h($section['text']) ?>"><?= h($section['thai']) ?></p>
+          <p class="text-xs font-bold uppercase tracking-wider <?= h($section['text']) ?>"><?= h($section['label']) ?> Module</p>
+        </div>
+        <span class="rounded-lg bg-white px-2.5 py-1 text-sm font-bold <?= h($section['text']) ?> shadow-sm"><?= number_format(count($sectionUsers)) ?></span>
+      </div>
+      <p class="mt-3 text-xs leading-5 text-slate-600"><?= h($section['description']) ?></p>
+      <p class="mt-2 text-xs font-semibold <?= h($section['text']) ?>"><?= number_format($sectionActive) ?> active user(s)</p>
+    </a>
+    <?php endforeach; ?>
+  </div>
+
+  <div class="space-y-5">
+    <?php foreach ($roleSections as $roleName => $section):
+      $sectionUsers = $usersByRole[$roleName];
+      $sectionActive = count(array_filter($sectionUsers, static fn($user): bool => (int)$user['is_active'] === 1));
+    ?>
+    <section id="role-<?= h($roleName) ?>" class="scroll-mt-20 overflow-hidden rounded-xl border border-l-4 bg-white <?= h($section['accent']) ?>">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b <?= h($section['soft']) ?> px-5 py-4">
+        <div>
+          <div class="flex flex-wrap items-baseline gap-x-2">
+            <h2 class="text-lg font-bold text-slate-800"><?= h($section['thai']) ?></h2>
+            <span class="text-xs font-bold uppercase tracking-wider <?= h($section['text']) ?>"><?= h($section['label']) ?> Module</span>
+          </div>
+          <p class="mt-1 text-sm text-slate-500"><?= h($section['description']) ?></p>
+        </div>
+        <div class="text-right">
+          <p class="text-lg font-bold <?= h($section['text']) ?>"><?= number_format(count($sectionUsers)) ?> user(s)</p>
+          <p class="text-xs text-slate-500"><?= number_format($sectionActive) ?> active</p>
+        </div>
+      </div>
+
+      <?php if ($sectionUsers): ?>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-sm">
+          <thead><tr class="border-b bg-slate-50/70 text-left text-xs uppercase tracking-wide text-slate-500"><th class="px-4 py-3">Account</th><th class="px-4 py-3">User</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Actions</th></tr></thead>
+          <tbody>
+          <?php foreach ($sectionUsers as $managedUser): $isSelf = (int)$managedUser['id'] === (int)$currentUser['id']; ?>
+            <tr class="border-b last:border-0 align-top <?= (int)$managedUser['is_active'] === 0 ? 'bg-gray-50 opacity-75' : '' ?>">
+              <td class="px-4 py-3">
+                <div class="font-mono font-semibold text-slate-800"><?= h($managedUser['username']) ?></div>
+                <div class="mt-1 text-xs text-slate-400">Created <?= fmtDate($managedUser['created_at']) ?><?= $isSelf ? ' · You' : '' ?></div>
+              </td>
+              <td class="px-4 py-3">
+                <div class="font-medium text-slate-800"><?= h($managedUser['full_name']) ?></div>
+                <div class="mt-1 text-xs text-slate-500"><?= h((string)($managedUser['email'] ?: 'No email')) ?></div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium <?= (int)$managedUser['is_active'] === 1 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600' ?>">
+                  <?= (int)$managedUser['is_active'] === 1 ? 'Active' : 'Inactive' ?>
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <?php if ($canManageUsers): ?>
+                <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+                  <button type="button" @click="closeAll(); open[<?= (int)$managedUser['id'] ?>] = true"
+                          class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">Edit</button>
+                  <?php if (!$isSelf): ?>
+                    <form method="POST" onsubmit="return confirm('Remove this user permanently? This action cannot be undone.');">
+                      <?= csrfField() ?>
+                      <input type="hidden" name="action" value="delete_user">
+                      <input type="hidden" name="user_id" value="<?= (int)$managedUser['id'] ?>">
+                      <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100">Remove</button>
+                    </form>
+                  <?php endif; ?>
+                </div>
+                <?php else: ?><div class="text-right text-xs font-medium text-gray-400">View only</div><?php endif; ?>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+      <?php else: ?>
+      <div class="px-5 py-8 text-center text-sm text-slate-400">No users assigned to this module.</div>
+      <?php endif; ?>
+    </section>
+    <?php endforeach; ?>
   </div>
 
   <?php

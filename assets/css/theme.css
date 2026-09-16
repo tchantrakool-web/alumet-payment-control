@@ -34,3 +34,31 @@ html select {
   background-color: #fff;
   font-size: 0.875rem;
 }
+
+/* AP Invoice Queue behaves like a dense financial data grid. Keep both axes
+ * inside the grid and make the bottom horizontal scrollbar easy to discover. */
+.ap-invoice-scroll {
+  scrollbar-color: #64748b #e2e8f0;
+  scrollbar-width: auto;
+  scrollbar-gutter: stable;
+}
+
+.ap-invoice-scroll::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.ap-invoice-scroll::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+
+.ap-invoice-scroll::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border: 3px solid #e2e8f0;
+  border-radius: 999px;
+}
+
+.ap-invoice-scroll::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
