@@ -80,14 +80,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Case-insensitive lookup stays a plain SELECT — resolving a vendor's
         // id by name isn't an insert-or-update decision, just an FK lookup.
-        $findVendor = $db->prepare("SELECT id FROM vendors WHERE vendor_name=? COLLATE NOCASE LIMIT 1");
+        $findVendor = $db->prepare("SELECT id FROM vendors WHERE LOWER(vendor_name)=LOWER(?) LIMIT 1");
         // The existing-source-type check is a genuine business rule (don't
         // let a finance sync silently overwrite a manually-created cheque),
         // not a race-prone existence check — it stays a read. What it used
         // to gate is a hand-written INSERT-vs-UPDATE branch; that part is
         // now the single upsert() call below, relying on the UNIQUE index
         // added in database/migrations/*/001_unique_cheque_no.sql.
-        $findExistingSourceType = $db->prepare("SELECT source_type FROM cheques WHERE cheque_no=? COLLATE NOCASE LIMIT 1");
+        $findExistingSourceType = $db->prepare("SELECT source_type FROM cheques WHERE LOWER(cheque_no)=LOWER(?) LIMIT 1");
 
         $created = 0;
         $updated = 0;
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect(BASE_URL . '/modules/cheques/');
         }
 
-        $stmtDuplicate = $db->prepare("SELECT id FROM cheques WHERE cheque_no = ? COLLATE NOCASE LIMIT 1");
+        $stmtDuplicate = $db->prepare("SELECT id FROM cheques WHERE LOWER(cheque_no) = LOWER(?) LIMIT 1");
         $stmtDuplicate->execute([$chequeNo]);
         if ($stmtDuplicate->fetchColumn()) {
             flash('error', 'เลขที่เช็คนี้มีอยู่ในระบบแล้ว');

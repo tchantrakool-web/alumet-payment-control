@@ -169,7 +169,16 @@ function main(array $argv): int {
         $mysql->commit();
         echo "\nData copy committed in one transaction.\n";
     } catch (Throwable $e) {
-        $mysql->rollBack();
+        // FOREIGN_KEY_CHECKS is session-scoped and is not restored by a
+        // rollback. Always put the connection back in its safe default state.
+        try {
+            $mysql->exec('SET FOREIGN_KEY_CHECKS=1');
+        } catch (Throwable) {
+            // Preserve the original copy error below.
+        }
+        if ($mysql->inTransaction()) {
+            $mysql->rollBack();
+        }
         fwrite(STDERR, "\nCopy failed, transaction rolled back: " . $e->getMessage() . "\n");
         return 1;
     }

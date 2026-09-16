@@ -141,7 +141,7 @@ try {
     $stmtErr = $db->prepare("INSERT INTO import_error_logs
         (import_batch_id, import_type, row_number, field_name, error_message, raw_data, created_at) VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)");
     $stmtVendor = $db->prepare("INSERT INTO vendors (vendor_name, created_at, updated_at)
-        SELECT ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM vendors WHERE vendor_name = ? COLLATE NOCASE)");
+        SELECT ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM vendors WHERE LOWER(vendor_name) = LOWER(?))");
 
     $imported = 0;
     $errors = 0;

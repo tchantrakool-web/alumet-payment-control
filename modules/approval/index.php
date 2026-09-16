@@ -26,7 +26,7 @@ if ($filterTab === 'pending' && !empty($pendingStatuses)) {
     if (in_array('Pending Finance Review', $pendingStatuses, true)) {
         $stmtFinance = $db->prepare("
             SELECT pr.*, u.full_name AS creator_name,
-                   CASE WHEN pr.due_date < date('now') THEN 1 ELSE 0 END AS is_overdue
+                   CASE WHEN pr.due_date < CURRENT_DATE THEN 1 ELSE 0 END AS is_overdue
             FROM payment_requests pr
             LEFT JOIN users u ON u.id = pr.created_by
             WHERE pr.status = 'Pending Finance Review'
@@ -42,7 +42,7 @@ if ($filterTab === 'pending' && !empty($pendingStatuses)) {
         if (isAdmin()) {
             $stmtApproval = $db->prepare("
                 SELECT pr.*, u.full_name AS creator_name,
-                       CASE WHEN pr.due_date < date('now') THEN 1 ELSE 0 END AS is_overdue
+                       CASE WHEN pr.due_date < CURRENT_DATE THEN 1 ELSE 0 END AS is_overdue
                 FROM payment_requests pr
                 LEFT JOIN users u ON u.id = pr.created_by
                 WHERE pr.status = 'Pending Management Approval'
@@ -53,7 +53,7 @@ if ($filterTab === 'pending' && !empty($pendingStatuses)) {
         } else {
             $stmtApproval = $db->prepare("
                 SELECT pr.*, u.full_name AS creator_name,
-                       CASE WHEN pr.due_date < date('now') THEN 1 ELSE 0 END AS is_overdue
+                       CASE WHEN pr.due_date < CURRENT_DATE THEN 1 ELSE 0 END AS is_overdue
                 FROM payment_requests pr
                 LEFT JOIN users u ON u.id = pr.created_by
                 JOIN approval_tasks at ON at.payment_request_id = pr.id

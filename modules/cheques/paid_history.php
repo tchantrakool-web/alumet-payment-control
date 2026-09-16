@@ -64,7 +64,7 @@ $missingFinanceGroups = max(0, $paidFinanceGroups - count($financeHistory));
 $paidRowsMissingDate = scalarCount($db, "SELECT COUNT(*) FROM finance_ap_records WHERE payment_status='Paid' AND COALESCE(paid_date,'')=''");
 $nonPaidWithDate = scalarCount($db, "SELECT COUNT(*) FROM finance_ap_records WHERE payment_status<>'Paid' AND COALESCE(paid_date,'')<>''");
 $receivedMissingEvidence = scalarCount($db, "SELECT COUNT(*) FROM cheques WHERE status='received' AND (COALESCE(received_date,'')='' OR COALESCE(receiver_name,'')='')");
-$futurePaymentDates = scalarCount($db, "SELECT (SELECT COUNT(*) FROM finance_ap_records WHERE paid_date>date('now','localtime')) + (SELECT COUNT(*) FROM cheques WHERE received_date>date('now','localtime'))");
+$futurePaymentDates = scalarCount($db, "SELECT (SELECT COUNT(*) FROM finance_ap_records WHERE paid_date>CURRENT_DATE) + (SELECT COUNT(*) FROM cheques WHERE received_date>CURRENT_DATE)");
 $duplicateSourceLines = scalarCount($db, "SELECT COUNT(*) FROM (
     SELECT cheque_no,vendor_name,invoice_no,COALESCE(tax_invoice_no,'')
     FROM finance_ap_records WHERE payment_status='Paid'

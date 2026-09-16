@@ -31,6 +31,20 @@ function sqlNow(): SqlExpression {
     return new SqlExpression('CURRENT_TIMESTAMP');
 }
 
+/** Portable SQL expression for whole calendar days between two trusted SQL expressions. */
+function sqlDaysBetween(string $later, string $earlier): string {
+    return dbDriver() === 'mysql'
+        ? "DATEDIFF({$later}, {$earlier})"
+        : "CAST(julianday({$later}) - julianday({$earlier}) AS INTEGER)";
+}
+
+/** Portable SQL expression for fractional hours between two trusted SQL expressions. */
+function sqlHoursBetween(string $later, string $earlier): string {
+    return dbDriver() === 'mysql'
+        ? "(TIMESTAMPDIFF(SECOND, {$earlier}, {$later}) / 3600.0)"
+        : "((julianday({$later}) - julianday({$earlier})) * 24.0)";
+}
+
 /**
  * Insert a row, or update it in place if a row already exists with the same
  * value(s) in the unique/primary-key column(s) named by $uniqueBy — one
@@ -166,15 +180,29 @@ function runPendingMigrations(PDO $pdo, string $driver): void {
             continue;
         }
 
-        $pdo->beginTransaction();
-        try {
-            runSqlFile($pdo, $file);
-            $stmt = $pdo->prepare('INSERT INTO schema_migrations (migration, applied_at) VALUES (?, CURRENT_TIMESTAMP)');
-            $stmt->execute([$name]);
-            $pdo->commit();
-        } catch (Throwable $e) {
-            $pdo->rollBack();
-            throw new RuntimeException("Migration {$name} failed: " . $e->getMessage(), 0, $e);
+        if ($driver === 'mysql') {
+            // MySQL and MariaDB implicitly commit most DDL, so a transaction
+            // here would already be gone by the time PDO::commit() runs.
+            try {
+                runSqlFile($pdo, $file);
+                $stmt = $pdo->prepare('INSERT INTO schema_migrations (migration, applied_at) VALUES (?, CURRENT_TIMESTAMP)');
+                $stmt->execute([$name]);
+            } catch (Throwable $e) {
+                throw new RuntimeException("Migration {$name} failed: " . $e->getMessage(), 0, $e);
+            }
+        } else {
+            $pdo->beginTransaction();
+            try {
+                runSqlFile($pdo, $file);
+                $stmt = $pdo->prepare('INSERT INTO schema_migrations (migration, applied_at) VALUES (?, CURRENT_TIMESTAMP)');
+                $stmt->execute([$name]);
+                $pdo->commit();
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                throw new RuntimeException("Migration {$name} failed: " . $e->getMessage(), 0, $e);
+            }
         }
     }
 }

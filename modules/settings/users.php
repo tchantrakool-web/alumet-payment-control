@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($password !== $passwordConfirmation) throw new RuntimeException('Password confirmation does not match.');
             if (!$role) throw new RuntimeException('Please select a valid role.');
 
-            $duplicate = $db->prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE');
+            $duplicate = $db->prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)');
             $duplicate->execute([$username]);
             if ($duplicate->fetchColumn()) throw new RuntimeException('Username already exists.');
 

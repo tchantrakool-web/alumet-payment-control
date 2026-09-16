@@ -27,14 +27,15 @@ switch ($report) {
     case 'aging':
         $reportTitle = 'Vendor Aging';
         $reportDescription = 'Outstanding AP balances grouped by vendor and aging bucket.';
+        $invoiceAgeSql = sqlDaysBetween('CURRENT_DATE', 'ap_invoice_date');
         $stmt = $db->prepare("
             SELECT vendor_name, vendor_code,
                    COUNT(*) as invoice_count,
                    SUM(ap_balance) as total_balance,
-                   SUM(CASE WHEN julianday('now') - julianday(ap_invoice_date) <= 30 THEN ap_balance ELSE 0 END) as d30,
-                   SUM(CASE WHEN julianday('now') - julianday(ap_invoice_date) BETWEEN 31 AND 60 THEN ap_balance ELSE 0 END) as d60,
-                   SUM(CASE WHEN julianday('now') - julianday(ap_invoice_date) BETWEEN 61 AND 90 THEN ap_balance ELSE 0 END) as d90,
-                   SUM(CASE WHEN julianday('now') - julianday(ap_invoice_date) > 90 THEN ap_balance ELSE 0 END) as d90plus
+                   SUM(CASE WHEN {$invoiceAgeSql} <= 30 THEN ap_balance ELSE 0 END) as d30,
+                   SUM(CASE WHEN {$invoiceAgeSql} BETWEEN 31 AND 60 THEN ap_balance ELSE 0 END) as d60,
+                   SUM(CASE WHEN {$invoiceAgeSql} BETWEEN 61 AND 90 THEN ap_balance ELSE 0 END) as d90,
+                   SUM(CASE WHEN {$invoiceAgeSql} > 90 THEN ap_balance ELSE 0 END) as d90plus
             FROM sap_ap_invoices
             WHERE is_deleted = 0
               AND ap_balance > 0
@@ -156,10 +157,11 @@ switch ($report) {
     case 'approval_lead_time':
         $reportTitle = 'Approval Lead Time';
         $reportDescription = 'Approval turnaround for completed payment requests.';
+        $leadTimeHoursSql = sqlHoursBetween('pr.updated_at', 'pr.submitted_at');
         $stmt = $db->query("
             SELECT pr.id, pr.request_no, pr.vendor_name, pr.net_payable,
                    pr.submitted_at, pr.updated_at,
-                   ROUND((julianday(pr.updated_at) - julianday(pr.submitted_at)) * 24, 1) as hours_to_complete,
+                   ROUND({$leadTimeHoursSql}, 1) as hours_to_complete,
                    pr.status
             FROM payment_requests pr
             WHERE pr.status IN ('Approved', 'Approved for Payment', 'Rejected', 'Paid')

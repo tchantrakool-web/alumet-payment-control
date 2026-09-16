@@ -40,9 +40,10 @@ if ($filterInvoiceTo !== '') {
 
 $invoices = [];
 $whereSql = implode(' AND ', $where);
+$agingDaysSql = sqlDaysBetween('CURRENT_DATE', 'i.ap_invoice_date');
 $stmt = $db->prepare("
     SELECT i.*,
-           CAST(julianday('now') - julianday(i.ap_invoice_date) AS INTEGER) AS aging_days,
+           {$agingDaysSql} AS aging_days,
            pr.id AS linked_pr_id,
            pr.request_no AS linked_pr_no,
            pr.status AS linked_pr_status

@@ -3,13 +3,17 @@
 <script>
 // Initialize all DataTables
 document.addEventListener('DOMContentLoaded', function() {
-    // A table whose only <tbody> row is a colspan "no results" placeholder has
-    // just 1 actual <td> against N <thead> columns, which DataTables reports as
-    // an "Incorrect column count" warning. Its default errMode shows that as a
-    // blocking native alert() on every empty list page, which freezes the page
-    // until dismissed. Log warnings instead of alerting on them.
+    // A colspan "no results" placeholder has one actual cell against many
+    // header columns. DataTables cannot initialize that shape: suppressing its
+    // alert still leaves an uncaught _DT_CellIndex error. Keep the server-
+    // rendered empty state intact and skip enhancement for such tables.
     $.fn.dataTable.ext.errMode = 'none';
     document.querySelectorAll('.datatable').forEach(function(el) {
+        const headerCells = el.querySelectorAll('thead tr:last-child th').length;
+        const hasUnevenBodyRow = Array.from(el.querySelectorAll('tbody tr'))
+            .some(function(row) { return row.cells.length !== headerCells; });
+        if (hasUnevenBodyRow) return;
+
         $(el).DataTable({
             searching: el.dataset.searching !== 'false',
             language: {

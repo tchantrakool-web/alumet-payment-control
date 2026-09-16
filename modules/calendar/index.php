@@ -36,26 +36,42 @@ $todayPay  = $payByDate[$today]['total'] ?? 0;
 $monthTotal = array_sum(array_column(array_values($payByDate), 'total'));
 
 // Weekly view data (next 4 weeks)
-$weekly = $db->query("
-    SELECT
-        strftime('%W', due_date) as week,
-        MIN(due_date) as week_start,
-        MAX(due_date) as week_end,
-        SUM(net_payable) as total,
-        COUNT(*) as cnt
+$fourWeeksOut = date('Y-m-d', strtotime('+28 days'));
+$weeklyStmt = $db->prepare("
+    SELECT due_date, net_payable
     FROM payment_requests
-    WHERE due_date >= date('now') AND due_date <= date('now', '+28 days')
+    WHERE due_date >= ? AND due_date <= ?
       AND is_deleted=0 AND status NOT IN ('draft','Rejected','Cancelled','Paid')
-    GROUP BY week ORDER BY week
-")->fetchAll();
+    ORDER BY due_date
+");
+$weeklyStmt->execute([$today, $fourWeeksOut]);
+$weeklyByIsoWeek = [];
+foreach ($weeklyStmt->fetchAll() as $row) {
+    $week = (new DateTimeImmutable($row['due_date']))->format('o-W');
+    if (!isset($weeklyByIsoWeek[$week])) {
+        $weeklyByIsoWeek[$week] = [
+            'week' => $week,
+            'week_start' => $row['due_date'],
+            'week_end' => $row['due_date'],
+            'total' => 0.0,
+            'cnt' => 0,
+        ];
+    }
+    $weeklyByIsoWeek[$week]['week_end'] = $row['due_date'];
+    $weeklyByIsoWeek[$week]['total'] += (float)$row['net_payable'];
+    $weeklyByIsoWeek[$week]['cnt']++;
+}
+$weekly = array_values($weeklyByIsoWeek);
 
 // Overdue
-$overdue = $db->query("
+$overdueStmt = $db->prepare("
     SELECT vendor_name, request_no, net_payable, due_date, status
     FROM payment_requests
-    WHERE due_date < date('now') AND status NOT IN ('Paid','Rejected','Cancelled','draft') AND is_deleted=0
+    WHERE due_date < ? AND status NOT IN ('Paid','Rejected','Cancelled','draft') AND is_deleted=0
     ORDER BY due_date ASC LIMIT 20
-")->fetchAll();
+");
+$overdueStmt->execute([$today]);
+$overdue = $overdueStmt->fetchAll();
 
 $prevMonth = $month == 1 ? 12 : $month - 1;
 $prevYear  = $month == 1 ? $year - 1 : $year;

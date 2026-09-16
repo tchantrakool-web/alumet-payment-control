@@ -9,15 +9,14 @@ that, the application's own SQL has been audited and fixed for portability:
 every `datetime('now','localtime')` literal call is now `CURRENT_TIMESTAMP`
 (valid on both engines), every `ON CONFLICT` upsert goes through one shared,
 driver-aware `upsert()` helper (`config/database.php`) instead of hand-written
-dialect-specific SQL or a racy SELECT-then-branch, no SQL text anywhere uses a
-double-quoted string literal, and no query repeats a named placeholder (in
-fact none of the app's SQL uses named placeholders at all — everything is
-positional `?`, so PDO's native prepares with `PDO::ATTR_EMULATE_PREPARES =
-false` work unchanged). What's left unfixed is narrower and listed under
-[Known incompatibilities](#known-incompatibilities-in-application-code-not-yet-fixed)
-below — mainly `COLLATE NOCASE` (harmless, just redundant) and the general
-float-vs-string handling of money values outside the DB layer itself
-(deliberately out of scope — see that section).
+dialect-specific SQL or a racy SELECT-then-branch, SQLite-only `COLLATE
+NOCASE` comparisons use portable `LOWER(column) = LOWER(?)` expressions, no
+SQL text anywhere uses a double-quoted string literal, and no query repeats a
+named placeholder (in fact none of the app's SQL uses named placeholders at
+all — everything is positional `?`, so PDO's native prepares with
+`PDO::ATTR_EMULATE_PREPARES = false` work unchanged). The remaining known
+application-level limitation is the general float-vs-string handling of money
+values (deliberately out of scope — see below).
 
 ## Prerequisites
 
@@ -116,6 +115,12 @@ cheque data**, confirm there are no existing duplicates (the migration file
 has the exact query) — it will fail loudly rather than silently corrupt
 anything if there are.
 
+SQLite migrations run inside a transaction. MySQL/MariaDB migrations do not:
+those engines implicitly commit most DDL statements, so pretending the whole
+file is transactional makes PDO report `There is no active transaction` after
+successful DDL. Keep each MySQL migration small, rerunnable where the syntax
+allows it, and back up the database before applying structural changes.
+
 ## ⚠ Timestamp semantics changed for every table, on both engines
 
 Every `datetime('now','localtime')` in this codebase — both the literal SQL
@@ -156,7 +161,7 @@ with `CURRENT_TIMESTAMP` defaults from the start.
 | Boolean flags | `INTEGER DEFAULT 0/1` | `TINYINT(1) DEFAULT 0/1` | No behavior change — MySQL's `BOOLEAN` is a literal alias for `TINYINT(1)`. |
 | Timestamps | `CURRENT_TIMESTAMP` (UTC) everywhere, both column defaults and literal `INSERT`/`UPDATE` values | `CURRENT_TIMESTAMP` (session time zone, typically UTC unless configured otherwise) | See the warning above — this is a real, already-applied behavior change, not just a porting concern. |
 | Date/datetime columns | `TEXT`, so an empty string `''` stores fine | `DATE`/`DATETIME`, and MySQL's default strict mode rejects `''` as an invalid date | The copy script already coerces `''` → `NULL` for columns MySQL considers date-typed (see `dateTypedColumns()` in `copy_sqlite_to_mysql.php`). Any *new* code path that inserts `''` into a date column after cutover will error on MySQL where it silently succeeded on SQLite. |
-| Case-insensitive text match | `COLLATE NOCASE` per-query | Column/connection collation (`utf8mb4_unicode_ci` is already case-insensitive) | The remaining `COLLATE NOCASE` call sites (below) are harmless no-ops on MySQL with this schema's collation, not errors — dead weight, not translations. |
+| Case-insensitive text match | `LOWER(column) = LOWER(?)` where an explicit insensitive match is needed | The same portable expression; `utf8mb4_unicode_ci` is also case-insensitive by default | Portable on both engines. SQLite's `LOWER()` and former `NOCASE` behavior are both ASCII-oriented; MySQL follows the column collation. |
 | Upsert | One `upsert()` helper (`config/database.php`), driver-aware | Same helper, `ON DUPLICATE KEY UPDATE` branch | Fixed this phase — see `config/notifications.php`, `config/sap_importer.php`, `modules/settings/index.php`, `modules/cheques/index.php`'s finance-sync path. All four require the target table to have a real UNIQUE/PRIMARY KEY constraint on the conflict column(s), which is why `001_unique_cheque_no.sql` exists. |
 | String aggregation | `GROUP_CONCAT(DISTINCT col)` | `GROUP_CONCAT(DISTINCT col)` | Portable as-is — MySQL/MariaDB support the same function and syntax. |
 | Foreign key enforcement | Off unless `PRAGMA foreign_keys=ON` (the app sets this) | Always enforced for InnoDB | Already-consistent behavior; nothing to change. |
@@ -166,17 +171,6 @@ with `CURRENT_TIMESTAMP` defaults from the start.
 | Double-quoted string literals | SQLite tolerates `"value"` as a string in some contexts | Default MySQL mode treats `"value"` as a string too, but `ANSI_QUOTES` mode makes it an identifier — ambiguous either way | Not a real risk here: audited, no SQL text anywhere in the app uses a double-quoted string literal (PHP's own double-quoted string delimiters, which are unrelated, are everywhere and are fine). |
 
 ## Known incompatibilities in application code (not yet fixed)
-
-**`COLLATE NOCASE`** — harmless but redundant under this schema's
-`utf8mb4_unicode_ci` collation (MySQL already compares case-insensitively);
-worth removing for clarity someday, not required for correctness or for a
-cutover to work:
-
-- `modules/cheques/index.php:81`
-- `modules/cheques/index.php:82`
-- `modules/cheques/index.php:166`
-- `modules/import/upload_finance.php:144`
-- `modules/settings/users.php:49`
 
 **Money values as native floats in application code** — deliberately out of
 scope. The schema and PDO driver layer already guarantee `DECIMAL` columns
