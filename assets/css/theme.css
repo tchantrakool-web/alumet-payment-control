@@ -62,3 +62,14 @@ html select {
 .ap-invoice-scroll::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
+
+/* Hard on/off blink for urgent inline warnings (e.g. missing-document notices),
+ * as opposed to Tailwind's animate-pulse which only fades opacity smoothly. */
+@keyframes blink-warning {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.blink-warning {
+  animation: blink-warning 1s step-start infinite;
+}

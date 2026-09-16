@@ -68,6 +68,7 @@ function checklistState(array $request, array $attachmentMap): array {
         'invoice' => ((int)($request['has_invoice'] ?? 0) === 1) || !empty($attachmentMap['Invoice']),
         'tax_invoice' => ((int)($request['has_tax_invoice'] ?? 0) === 1) || !empty($attachmentMap['Tax Invoice']),
         'payment_proof' => !empty($attachmentMap['Payment Proof']),
+        'payment_voucher' => !empty($attachmentMap['Payment Voucher']),
     ];
 }
 
@@ -75,23 +76,23 @@ function validateChecklist(array $request, array $attachmentMap): array {
     $state = checklistState($request, $attachmentMap);
     $errors = [];
     if (!$state['po']) {
-        $errors[] = 'PO is required';
+        $errors[] = t('pr.detail.err.po_required');
     }
     if (!$state['grn']) {
-        $errors[] = 'GRN / GRPO is required';
+        $errors[] = t('pr.detail.err.grn_required');
     }
     if (!$state['invoice']) {
-        $errors[] = 'Vendor invoice is required';
+        $errors[] = t('pr.detail.err.invoice_required');
     }
     if ((int)($request['tax_invoice_required'] ?? 1) === 1 && !$state['tax_invoice']) {
-        $errors[] = 'Tax invoice is required';
+        $errors[] = t('pr.detail.err.tax_invoice_required');
     }
     if ((int)($request['wht_applicable'] ?? 0) === 1) {
         if ((float)($request['wht_base_amount'] ?? 0) <= 0) {
-            $errors[] = 'WHT base amount is required';
+            $errors[] = t('pr.detail.err.wht_base_required');
         }
         if ((float)($request['wht_amount'] ?? 0) <= 0) {
-            $errors[] = 'WHT amount is required';
+            $errors[] = t('pr.detail.err.wht_amount_required');
         }
     }
     return [$state, $errors];
@@ -509,7 +510,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!$currentChecklist['payment_proof']) {
-            flash('error', 'Payment Proof attachment is required before marking paid');
+            flash('error', t('pr.detail.err.payment_proof_required'));
+            redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
+        }
+
+        if (!$currentChecklist['payment_voucher']) {
+            flash('error', t('pr.detail.err.payment_voucher_required'));
             redirect(BASE_URL . '/modules/payment_requests/detail.php?id=' . $id);
         }
 
@@ -683,8 +689,17 @@ include ROOT_PATH . '/layouts/header.php';
               'invoice' => t('pr.detail.invoice_confirmed'),
               'tax_invoice' => t('pr.detail.tax_confirmed'),
           ];
-          foreach ($checklistLabels as $key => $label): ?>
-          <div class="flex items-center gap-2 rounded-lg border p-3 text-sm <?= $checklist[$key] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'text-gray-500' ?>">
+          $whtApplicable = (int)($request['wht_applicable'] ?? 0) === 1;
+          $whtBaseError = $whtApplicable && (float)($request['wht_base_amount'] ?? 0) <= 0;
+          $whtAmountError = $whtApplicable && (float)($request['wht_amount'] ?? 0) <= 0;
+          foreach ($checklistLabels as $key => $label):
+            $isTaxInvoiceRequired = $key !== 'tax_invoice' || (int)($request['tax_invoice_required'] ?? 1) === 1;
+            $isError = !$checklist[$key] && $isTaxInvoiceRequired;
+            $boxClass = $checklist[$key]
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : ($isError ? 'border-2 border-rose-500 bg-rose-50 text-rose-700' : 'text-gray-500');
+          ?>
+          <div class="flex items-center gap-2 rounded-lg border p-3 text-sm <?= $boxClass ?>">
             <span><?= $checklist[$key] ? '✓' : '—' ?></span> <?= $label ?>
           </div>
           <?php endforeach; ?>
@@ -694,8 +709,8 @@ include ROOT_PATH . '/layouts/header.php';
           <div><p class="text-xs text-gray-500"><?= t('label.gross_amount') ?></p><p class="font-medium">THB <?= fmtMoney((float)($request['gross_amount'] ?? $request['total_amount'])) ?></p></div>
           <div><p class="text-xs text-gray-500"><?= t('pr.detail.wht_applicable') ?></p><p class="font-medium"><?= (int)$request['wht_applicable'] === 1 ? t('label.yes') : t('label.no') ?></p></div>
           <div><p class="text-xs text-gray-500"><?= t('label.wht_rate') ?></p><p class="font-medium"><?= (float)$request['wht_rate'] > 0 ? rtrim(rtrim(number_format((float)$request['wht_rate'], 2), '0'), '.') . '%' : '-' ?></p></div>
-          <div><p class="text-xs text-gray-500"><?= t('label.wht_base') ?></p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_base_amount']) ?></p></div>
-          <div><p class="text-xs text-gray-500"><?= t('label.wht_amount') ?></p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_amount']) ?></p></div>
+          <div class="<?= $whtBaseError ? 'rounded-lg border-2 border-rose-500 bg-rose-50 p-2' : '' ?>"><p class="text-xs text-gray-500"><?= t('label.wht_base') ?></p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_base_amount']) ?></p></div>
+          <div class="<?= $whtAmountError ? 'rounded-lg border-2 border-rose-500 bg-rose-50 p-2' : '' ?>"><p class="text-xs text-gray-500"><?= t('label.wht_amount') ?></p><p class="font-medium">THB <?= fmtMoney((float)$request['wht_amount']) ?></p></div>
           <div><p class="text-xs text-gray-500"><?= t('label.net_payable') ?></p><p class="font-medium text-emerald-700">THB <?= fmtMoney((float)$request['net_payable']) ?></p></div>
           <div><p class="text-xs text-gray-500"><?= t('pr.detail.tax_req_checkbox') ?></p><p class="font-medium"><?= (int)$request['tax_invoice_required'] === 1 ? t('label.yes') : t('label.no') ?></p></div>
         </div>
@@ -767,6 +782,7 @@ include ROOT_PATH . '/layouts/header.php';
             <option value="GRPO">GRPO</option>
             <option value="Tax Invoice">Tax Invoice</option>
             <option value="Payment Proof">Payment Proof</option>
+            <option value="Payment Voucher">Payment Voucher</option>
             <option value="Other">Other</option>
           </select>
           <button type="submit" class="theme-btn-primary rounded px-3 py-1 text-xs"><?= t('btn.upload') ?></button>
@@ -945,6 +961,13 @@ include ROOT_PATH . '/layouts/header.php';
         <input type="hidden" name="action" value="submit_documents">
         <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.submit_accounting') ?></button>
       </form>
+      <?php if (!empty($checklistErrors)): ?>
+      <div class="mt-1.5 space-y-1">
+        <?php foreach ($checklistErrors as $checklistError): ?>
+        <p class="blink-warning text-base font-bold text-rose-600">• <?= h($checklistError) ?></p>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
       <?php elseif ($request['status'] === 'Pending Accounting Review' && hasRole('admin', 'maker', 'finance_manager')): ?>
       <form method="POST" class="space-y-2">
         <?= csrfField() ?>
@@ -1055,6 +1078,11 @@ include ROOT_PATH . '/layouts/header.php';
         <button class="theme-btn-secondary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.resubmit_btn') ?></button>
       </form>
       <?php elseif ($request['status'] === 'Approved for Payment' && hasRole('admin', 'finance_manager')): ?>
+      <?php
+        $paymentDocErrors = [];
+        if (!$checklist['payment_proof'])   { $paymentDocErrors[] = t('pr.detail.err.payment_proof_required'); }
+        if (!$checklist['payment_voucher']) { $paymentDocErrors[] = t('pr.detail.err.payment_voucher_required'); }
+      ?>
       <form method="POST" class="space-y-2">
         <?= csrfField() ?>
         <input type="hidden" name="action" value="mark_paid">
@@ -1064,7 +1092,15 @@ include ROOT_PATH . '/layouts/header.php';
         <input type="text" name="payer_name" value="<?= h((string)$request['payer_name']) ?>" placeholder="<?= t('label.payee') ?>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
         <button class="theme-btn-primary w-full rounded-lg py-2 text-sm font-medium"><?= t('pr.detail.mark_paid_btn') ?></button>
       </form>
+      <?php if (!empty($paymentDocErrors)): ?>
+      <div class="mt-1.5 space-y-1">
+        <?php foreach ($paymentDocErrors as $paymentDocError): ?>
+        <p class="blink-warning text-base font-bold text-rose-600">• <?= h($paymentDocError) ?></p>
+        <?php endforeach; ?>
+      </div>
+      <?php else: ?>
       <p class="mt-2 text-xs text-gray-500"><?= t('pr.detail.proof_required') ?></p>
+      <?php endif; ?>
       <?php else: ?>
       <p class="py-2 text-center text-sm text-gray-400"><?= t('pr.detail.no_action') ?></p>
       <?php endif; ?>
